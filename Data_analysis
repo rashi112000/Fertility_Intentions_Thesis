@@ -1,0 +1,12 @@
+getwd()
+list.files()
+setwd("/Users/rashisingh/Desktop")
+setwd("/Users/rashisingh/Desktop/Floods")
+list.files()
+data <- read.csv("/Users/rashisingh/Desktop/Floods/Survey_1_cleaned.csv")
+head(data)
+tail(data)
+str(data)
+View(data)
+region <- data$region
+birth_year <- data$birth_year
