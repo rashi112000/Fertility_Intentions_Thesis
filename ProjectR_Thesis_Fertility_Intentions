@@ -6,3 +6,15 @@ getwd()
 list.files()
 setwd("/Users/rashisingh/Thesis_Fertility_Intentions")
 data <- read.csv("/Users/rashisingh/Thesis_Fertility_Intentions/Survey_1_cleaned.csv")
+
+#Visualizing Columns for reference
+ClimateConcern <- data[, c("Q41_T0", "Q43_T1")]
+IdealChildren_Society <- data[, c("Q50_T0_MOD", "Q52_MOD_T1")]
+IdealChildren_Personally <- data[, c("Q51_T0", "Q53_MOD_T1")]
+
+#Combining Columns of T0 & T1 
+
+data$Concern_Combined <- paste(data$Q41_T0, data$Q43_T1)
+data$Ideal_Children_Society <- paste(data$Q50_T0_MOD, data$Q53_MOD_T1) 
+data$Ideal_Children_Personally <- paste(data$Q51_T0, data$Q53_MOD_T1)
+View(data)
