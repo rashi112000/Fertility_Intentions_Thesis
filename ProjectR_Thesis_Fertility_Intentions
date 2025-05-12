@@ -18,3 +18,18 @@ data$Concern_Combined <- paste(data$Q41_T0, data$Q43_T1)
 data$Ideal_Children_Society <- paste(data$Q50_T0_MOD, data$Q53_MOD_T1) 
 data$Ideal_Children_Personally <- paste(data$Q51_T0, data$Q53_MOD_T1)
 View(data)
+
+ # Converting data to lowercase for easier pattern 
+data$Concern_Combined_clean <- tolower(data$Concern_Combined)
+View(data)
+library(dplyr)
+library(stringr)
+
+data$Concern_Category <- case_when(
++     str_detect(data$Concern_Combined_clean, "not at all concerned|not concerned") ~ "UNCONCERNED",
++     str_detect(data$Concern_Combined_clean, "fairly concerned|moderately concerned") ~ "CONCERNED",
++     str_detect(data$Concern_Combined_clean, "very concerned") ~ "VERY CONCERNED",
++     str_detect(data$Concern_Combined_clean, "extremely concerned|highly concerned") ~ "EXTREMELY CONCERNED",
++     TRUE ~ NA_character_
++ )
+
