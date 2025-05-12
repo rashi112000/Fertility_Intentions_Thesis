@@ -33,3 +33,34 @@ data$Concern_Category <- case_when(
 +     TRUE ~ NA_character_
 + )
 
+library(ggplot2)
+
+# plot without percentage
+library(ggplot2)
+
+ggplot(data, aes(x = Concern_Category)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Levels of Climate Change Concern",
+       x = "Concern Category",
+       y = "Number of Respondents") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+# plot with percentage 
+
+# Calculate the count and percentage for each category
+category_counts <- data %>%
+  count(Concern_Category) %>%
+  mutate(percentage = n / sum(n) * 100)
+
+# Plot the bar chart with percentages
+ggplot(category_counts, aes(x = Concern_Category, y = percentage)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
+  labs(title = "Levels of Climate Change Concern",
+       x = "Concern Category",
+       y = "Percentage of Respondents") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
