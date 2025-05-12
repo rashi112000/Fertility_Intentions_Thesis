@@ -1,0 +1,8 @@
+# Thesis_Fertility_Intentions
+
+# Code for the new project I started in R
+
+getwd()
+list.files()
+setwd("/Users/rashisingh/Thesis_Fertility_Intentions")
+data <- read.csv("/Users/rashisingh/Thesis_Fertility_Intentions/Survey_1_cleaned.csv")
