@@ -8,5 +8,11 @@ head(data)
 tail(data)
 str(data)
 View(data)
+IdealChildren_Society <- data[, c("Q52_T1", "Q52_MOD_T1")]
+ClimateConcern <- data[, c("Q41_T0", "Q43_T1")]
+class(data$Q41_T0)
+class(data$Q43_T1)
+data$Concern_Combined <- paste(data$Q41_T0, data$Q43_T1)
+View(df_subset)
 region <- data$region
 birth_year <- data$birth_year
