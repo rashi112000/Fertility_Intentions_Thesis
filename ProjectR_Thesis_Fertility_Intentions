@@ -227,14 +227,38 @@ print(non_numeric_values)
 # Convert the column to numeric - data has new column as birth_year_numeric
 
 data$birth_year_numeric <- as.numeric(data$birth_year)
+# checking if NA still exist 
+sum(is.na(data$birth_year_numeric)) #3 
 
-# Calculating age 
-data$age <- 2025 - data$birth_year_numeric
+# removing NA 
+data <- data[!is.na(data$birth_year_numeric), ]
+
+# Checking if NA is removed 
+sum(is.na(data$birth_year_numeric))
+
 # new column of age is created 
 
 typeof(data$age) # double 
 sum(is.na(data$age)) #3
 
+mean_age <- mean(data$age, na.rm = TRUE)
+
+# still issue was coming in calculating mea age as it was still coming neegative
+
+# checking maximum and minimum age 
+range(data$birth_year_numeric, na.rm = TRUE)
+# 1933 and 2024 
+
+#  Keep only valid birth years (between 1920 and 2025)
+data <- data[data$birth_year_numeric >= 1933 & data$birth_year_numeric <= 2024, ]
+
+# recalculating age 
+data$age <- 2025 - data$birth_year_numeric
+
+# summary and mean 
+summary(data$age)
+mean(data$age, na.rm = TRUE)
+# 45.47
 
 
 
