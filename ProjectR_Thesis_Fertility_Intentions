@@ -37,6 +37,7 @@ data$Concern_Category <- case_when(
  # Checking NA after categorization step
 
 sum(is.na(data$Concern_Category)) 
+
 library(ggplot2)
 
 # plot without percentage
@@ -58,21 +59,26 @@ category_counts <- data %>%
   count(Concern_Category) %>%
   mutate(percentage = n / sum(n) * 100)
 
-# Calculate the count and percentage for each category
-category_counts <- data %>%
-  count(Concern_Category) %>%
-  mutate(percentage = n / sum(n) * 100)
 
-# Plot the bar chart with percentages
-ggplot(category_counts, aes(x = Concern_Category, y = percentage)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
-  labs(title = "Levels of Climate Change Concern",
-       x = "Concern Category",
-       y = "Percentage of Respondents") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(hjust = 0.5))
+# plotting the graph with pastel shades 4 categories 
+
+ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
+    geom_bar(stat = "identity", width = 0.6, color = "white") +
+    geom_text(aes(label = paste0(round(percentage, 1), "%")), 
+              vjust = -0.3, size = 4.5, fontface = "bold") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+        title = "Distribution of Climate Change Concern Among Respondents",
+        x = "Concern Category",
+        y = "Percentage of Respondents"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        axis.text.x = element_text(angle = 20, vjust = 1, hjust = 1),
+        legend.position = "none"
+    ) +
+    ylim(0, max(category_counts$percentage) + 10)
 
 
 # Combing Very concerned and Extremely concerned into one category of Very concerned
@@ -98,34 +104,27 @@ category_counts <- data %>%
   mutate(percentage = n / sum(n) * 100)
 
 # Plot the bar chart with percentages
-ggplot(category_counts, aes(x = Concern_Category, y = percentage)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
-  labs(title = "Levels of Climate Change Concern",
-       x = "Concern Category",
-       y = "Percentage of Respondents") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(hjust = 0.5))
-
-# plotting the graph with pastel shades 4 categories 
+library(ggplot2)
 
 ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
-    geom_bar(stat = "identity", width = 0.6, color = "white") +
-    geom_text(aes(label = paste0(round(percentage, 1), "%")), 
-              vjust = -0.3, size = 4.5, fontface = "bold") +
-    scale_fill_brewer(palette = "Pastel1") +
-    labs(
-        title = "Distribution of Climate Change Concern Among Respondents",
-        x = "Concern Category",
-        y = "Percentage of Respondents"
-    ) +
-    theme_minimal(base_size = 13) +
-    theme(
-        plot.title = element_text(hjust = 0.5, face = "bold"),
-        axis.text.x = element_text(angle = 20, vjust = 1, hjust = 1),
-        legend.position = "none"
-    ) +
-    ylim(0, max(category_counts$percentage) + 10)
+  geom_bar(stat = "identity", width = 0.6, color = "white") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")),
+            vjust = -0.3, size = 4.5, fontface = "bold") +
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(
+    title = "Distribution of Climate Change Concern Among Respondents",
+    x = "Concern Category",
+    y = "Percentage of Respondents"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 20, vjust = 1, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylim(0, max(category_counts$percentage) + 10)
+
+
+
 
 
