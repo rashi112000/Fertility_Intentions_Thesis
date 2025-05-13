@@ -1,6 +1,6 @@
 # Thesis_Fertility_Intentions
 
-# Code for the new project I started in R
+# Code for the new project created
 
 getwd()
 list.files()
@@ -19,7 +19,7 @@ data$Ideal_Children_Society <- paste(data$Q50_T0_MOD, data$Q53_MOD_T1)
 data$Ideal_Children_Personally <- paste(data$Q51_T0, data$Q53_MOD_T1)
 View(data)
 
- # Converting data to lowercase for easier pattern 
+ # Converting data to lowercase for easier pattern recognition
 data$Concern_Combined_clean <- tolower(data$Concern_Combined)
 View(data)
 library(dplyr)
@@ -87,7 +87,7 @@ data$Concern_Category <- case_when(
 # checking to see if NA is introduced by mistake 
 sum(is.na(data$Concern_Category))
 
-# Plotting 
+# Plotting 3 categories
 # Load necessary library
 library(ggplot2)
 library(dplyr)
@@ -108,7 +108,7 @@ ggplot(category_counts, aes(x = Concern_Category, y = percentage)) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         plot.title = element_text(hjust = 0.5))
 
-# plotting the graph with pastel shades 
+# plotting the graph with pastel shades 4 categories 
 
 ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
     geom_bar(stat = "identity", width = 0.6, color = "white") +
