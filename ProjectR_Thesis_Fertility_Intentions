@@ -108,3 +108,24 @@ ggplot(category_counts, aes(x = Concern_Category, y = percentage)) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1),
         plot.title = element_text(hjust = 0.5))
 
+# plotting the graph with pastel shades 
+
+ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
+    geom_bar(stat = "identity", width = 0.6, color = "white") +
+    geom_text(aes(label = paste0(round(percentage, 1), "%")), 
+              vjust = -0.3, size = 4.5, fontface = "bold") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+        title = "Distribution of Climate Change Concern Among Respondents",
+        x = "Concern Category",
+        y = "Percentage of Respondents"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        axis.text.x = element_text(angle = 20, vjust = 1, hjust = 1),
+        legend.position = "none"
+    ) +
+    ylim(0, max(category_counts$percentage) + 10)
+
+
