@@ -260,5 +260,8 @@ summary(data$age)
 mean(data$age, na.rm = TRUE)
 # 45.47
 
+# Only reproductive age respondants (18-50)
+Reproductive_age <- data[data$age >= 18 & data$age <= 50, ]
+
 
 
