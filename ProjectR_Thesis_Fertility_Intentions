@@ -210,5 +210,28 @@ ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern
     coord_flip(ylim = c(0, max(category_counts$percentage) + 10))
 
 
+# Calculating the age of people 
+
+typeof(data$birth_year) # character 
+
+# Converting character to numerical 
+data$birth_year <- as.numeric(data$birth_year)
+
+# Check which values were not successfully converted to numeric
+non_numeric_values <- data$birth_year[is.na(as.numeric(data$birth_year))]
+print(non_numeric_values)
+
+# Convert the column to numeric - data has new column as birth_year_numeric
+
+data$birth_year_numeric <- as.numeric(data$birth_year)
+
+# Calculating age 
+data$age <- 2025 - data$birth_year_numeric
+# new column of age is created 
+
+typeof(data$age) # double 
+sum(is.na(data$age)) #3
+
+
 
 
