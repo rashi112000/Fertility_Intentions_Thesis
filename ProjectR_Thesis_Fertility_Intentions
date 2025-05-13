@@ -217,6 +217,9 @@ typeof(data$birth_year) # character
 # Converting character to numerical 
 data$birth_year <- as.numeric(data$birth_year)
 
+# checking id NA were introduced 
+sum(is.na(data$birth_year)) #3
+
 # Check which values were not successfully converted to numeric
 non_numeric_values <- data$birth_year[is.na(as.numeric(data$birth_year))]
 print(non_numeric_values)
