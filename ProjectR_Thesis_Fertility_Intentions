@@ -81,6 +81,52 @@ ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern
     ) +
     ylim(0, max(category_counts$percentage) + 10)
 
+# PLOTTING HORIZONTAL BAR CHART
+
+library(ggplot2)
+library(dplyr)
+
+# Ensure correct ordering of categories
+category_counts <- category_counts %>%
+    mutate(Concern_Category = reorder(Concern_Category, percentage))
+
+ggplot(category_counts, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
+    geom_bar(stat = "identity", width = 0.6, color = "white") +
+    
+    # Smart label placement: inside if percentage is high, outside if low
+    geom_text(aes(label = paste0(round(percentage, 1), "%")),
+              hjust = ifelse(category_counts$percentage > 10, 1.05, -0.15),
+              color = ifelse(category_counts$percentage > 10, "black"),
+              size = 4.2, fontface = "bold") +
+    
+    scale_fill_brewer(palette = "Pastel1") +
+    
+    labs(
+        title = "Climate Change Concern Levels Among Respondents",
+        x = NULL,
+        y = "Percentage of Respondents"
+    ) +
+    
+    theme_minimal(base_size = 13) +
+    theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 15),
+        axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12),
+        axis.title.y = element_text(face = "bold"),
+        axis.title.x = element_text(face = "bold"),
+        panel.grid.major.y = element_blank(),  # cleaner look
+        panel.grid.minor = element_blank(),
+        legend.position = "none",
+        plot.margin = margin(10, 30, 10, 10)
+    ) +
+    
+    coord_flip(ylim = c(0, max(category_counts$percentage) + 10))
+
+
+
+
+
+
 
 # Combing Very concerned and Extremely concerned into one category of Very concerned
 
