@@ -22,6 +22,7 @@ View(data)
  # Converting data to lowercase for easier pattern recognition
 data$Concern_Combined_clean <- tolower(data$Concern_Combined)
 View(data)
+
 library(dplyr)
 library(stringr)
 
@@ -44,7 +45,7 @@ library(ggplot2)
 library(ggplot2)
 ggplot(data, aes(x = Concern_Category)) +
   geom_bar(fill = "steelblue") +
-  labs(title = "Levels of Climate Change Concern",
+  labs(title = "Distribution of Climate Change Concern Among Respondents",
        x = "Concern Category",
        y = "Number of Respondents") +
   theme_minimal() +
