@@ -2,6 +2,10 @@
 
 # Code for the new project created
 
+library(dplyr)
+library(stringr)
+library(ggplot2)
+
 getwd()
 list.files()
 setwd("/Users/rashisingh/Thesis_Fertility_Intentions")
@@ -87,11 +91,11 @@ Reproductive_age$Concern_Category <- case_when(
     str_detect(Reproductive_age$Concern_Combined_clean, "fairly concerned") ~ "CONCERNED",
     str_detect(Reproductive_age$Concern_Combined_clean, "very concerned") ~ "VERY CONCERNED",
     str_detect(Reproductive_age$Concern_Combined_clean, "extremely concerned") ~ "EXTREMELY CONCERNED",
-    TRUE ~ NA_character_
+    TRUE ~ NA_character_155
 )
 
  # Checking NA after categorization step
-sum(is.na(data$Concern_Category))  #0
+sum(is.na(Reproductive_age$Concern_Category))  #12
 
 
 # plot with percentage
@@ -99,6 +103,9 @@ sum(is.na(data$Concern_Category))  #0
 category_counts <- Reproductive_age %>%
     count(Concern_Category) %>%
     mutate(percentage = n / sum(n) * 100)
+
+print(category_counts)
+
 
 
 
