@@ -81,6 +81,7 @@ Reproductive_age <- data[data$age >= 18 & data$age <= 50, ]
 # Converting data to lowercase for easier pattern recognition
 Reproductive_age <- Reproductive_age %>%
     mutate(Concern_Combined_clean = str_to_lower(Concern_Combined))
+# Thus, new column Concern_Combined_clean is created 
 
 #Categorising data for plotting 
 
