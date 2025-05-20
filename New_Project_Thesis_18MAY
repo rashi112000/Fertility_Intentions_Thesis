@@ -76,7 +76,7 @@ sum(is.na(data$age)) #0
 # Only reproductive age respondents (18–50 years)
 Reproductive_age <- data[data$age >= 18 & data$age <= 50, ]
  
-
+## end of 20th may bro##
 
 
 
