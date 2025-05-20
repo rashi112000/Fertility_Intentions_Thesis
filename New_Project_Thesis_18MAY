@@ -21,6 +21,66 @@ sum(is.na(data$Ideal_Children_Personally))
 
 typeof(data$birth_year) # Character 
 
+# checking why we get 12 NA 20 may 2025
+
+# Save original birth_year column
+data$birth_year_raw <- data$birth_year
+
+# Now extract valid 4-digit years
+data$birth_year <- as.numeric(stringr::str_extract(as.character(data$birth_year_raw), "\\b(18|19|20)\\d{2}\\b"))
+
+# Show original values that became NA after extraction
+data[is.na(data$birth_year), "birth_year_raw"]
+
+# WE GET  
+
+#[1] "Giovanni" "1056"     "1085"     "2971"    
+#[5] "2964"     "Marco"    "2977"     "2991"    
+#[9] "2²2"      "1067"     "2960"     "2957"    
+#[13] "52100"    "148122"   "1793"
+
+# cleaning these now 
+
+# Step 1: Preserve original
+data$birth_year_raw <- as.character(data$birth_year)
+
+# Step 2: Extract only 4-digit numbers starting with 18, 19, or 20
+data$birth_year <- as.numeric(stringr::str_extract(data$birth_year_raw, "\\b(18|19|20)\\d{2}\\b"))
+
+# Step 3: Keep only realistic years
+data <- data[data$birth_year >= 1894 & data$birth_year <= 2024, ]
+
+# Step 4: Recalculate age
+data$age <- 2025 - data$birth_year
+
+# did not work so do this as soon as you load the data 
+
+# Step 1: Preserve original
+data$birth_year_raw <- as.character(data$birth_year)  # Only if original is still intact
+
+# Step 2: Extract valid 4-digit years starting with 18, 19, or 20
+data$birth_year <- as.numeric(stringr::str_extract(data$birth_year_raw, "\\b(18|19|20)\\d{2}\\b"))
+
+# Step 3: Keep only birth years between 1894 and 2024
+data <- data[data$birth_year >= 1894 & data$birth_year <= 2024, ]
+
+# Step 4: Calculate age
+data$age <- 2025 - data$birth_year
+
+# Step 5: Check which are still NA (optional)
+data[is.na(data$birth_year), "birth_year_raw"]
+# character(0)
+
+sum(is.na(data$age)) #0 
+
+# Only reproductive age respondents (18–50 years)
+Reproductive_age <- data[data$age >= 18 & data$age <= 50, ]
+ 
+
+
+
+
+
 # Converting Character to Numerical 
 data <- data %>%
     mutate(birth_year = as.numeric(birth_year))
