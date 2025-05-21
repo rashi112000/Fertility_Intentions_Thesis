@@ -20,7 +20,7 @@ IdealChildren_Personally <- data[, c("Q51_T0", "Q53_MOD_T1")]
 
 data$Concern_Combined <- paste(data$Q41_T0, data$Q43_T1)
 data$Ideal_Children_Society <- paste(data$Q50_T0_MOD, data$Q53_MOD_T1) 
-data$Ideal_Children_Personally <- paste(data$Q51_T0, data$Q53_MOD_T1)
+## mistake!!! RECODE THIS: data$Ideal_Children_Personally <- paste(data$Q51_T0, data$Q53_MOD_T1)
 View(data)
 
  # Converting data to lowercase for easier pattern recognition
