@@ -36,3 +36,9 @@ library(modest)
 # Example where you can code the data with different classes- telling them as categorical variables
 
 Reproductive_age$sex <- factor(Reproductive_age$sex, levels = c(0,1), labels = c("male", "female"))
+
+
+
+
+
+
