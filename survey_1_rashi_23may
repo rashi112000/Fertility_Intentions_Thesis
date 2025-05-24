@@ -1,6 +1,14 @@
 # Today we will use data cleaned by chiara to see what we want to do 
 # in thesis folder 
 
+install.packages("dplyr")
+install.packages("stringr")
+install.packages("ggplot2")
+install.packages("tidyr")
+install.packages("janitor")
+
+
+
 library(dplyr)
 library(stringr)
 library(ggplot2)
@@ -123,10 +131,7 @@ reproductive_cleaned <- reproductive_age_2 %>%
     
     # Group education
     mutate(education_group = case_when(
-        education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
-        education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
-        education == "No educational qualification" ~ "No education",
-        TRUE ~ NA_character_
+        education %in% c 
     )) %>%
     
     # Group employment status
