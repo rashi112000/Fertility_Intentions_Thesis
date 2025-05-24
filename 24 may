@@ -6,14 +6,20 @@ install.packages("stringr")
 install.packages("ggplot2")
 install.packages("tidyr")
 install.packages("janitor")
-
+install.packages("knitr")
+install.packages("kableExtra")
+install.packages("readr")
 
 
 library(dplyr)
 library(stringr)
+library(readr)
 library(ggplot2)
 library(tidyr)
 library(janitor)
+library(knitr)
+library(kableExtra)
+
 # Loading the data 
 
 getwd()
@@ -144,7 +150,7 @@ table(reproductive_age_2$present_children, useNA = "ifany")
 
 # For EDUCATION
 
-reproductive_age_2$education <- with(reproductive_age_2,
+reproductive_age_2$educational_qualification <- with(reproductive_age_2,
                                      ifelse(is.na(education), NA,
                                             ifelse(education %in% c("Bachelor's or Master's degree", "Ph.D."), "Bachelor/Master/PhD",
                                                    ifelse(education %in% c("Elementary school diploma", "Middle school diploma", "High school diploma"), "Elementary to High School",
@@ -241,5 +247,99 @@ reproductive_age_2$climate_concern <- factor(reproductive_age_2$climate_concern,
                                              ordered = TRUE)
 
 table(reproductive_age_2$climate_concern, useNA = "ifany")
+
+
+
+
+
+
+# Preparing the table 
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(readr)  # for write_csv()
+
+# Step 1: Numeric summary for age
+desc_table <- reproductive_age_2 %>%
+    group_by(climate_concern) %>%
+    summarise(
+        N = n(),
+        `Mean age` = round(mean(age, na.rm = TRUE), 1),
+        `SD age` = round(sd(age, na.rm = TRUE), 1),
+        .groups = "drop"
+    ) %>%
+    rename(`Climate concern` = climate_concern)
+
+# Reshape to wide format for final table
+desc_table_wide <- desc_table %>%
+    pivot_longer(cols = -`Climate concern`, names_to = "Variable", values_to = "value") %>%
+    pivot_wider(names_from = `Climate concern`, values_from = value) %>%
+    rename(Low = `Low`, Medium = `Medium`, High = `High`) %>%
+    mutate(Category = "") %>%
+    select(Variable, Category, Low, Medium, High) %>%
+    mutate(across(c(Low, Medium, High), as.character))
+
+# Step 2: Categorical summary
+categorical_vars <- c("sex_binary", "present_children", "educational_qualification",
+                      "employment_status_current", "marital_status", 
+                      "net_income_monthly", "age_bracket")
+
+# Compute frequency and percentage for each categorical variable
+cat_tables <- lapply(categorical_vars, function(var) {
+    reproductive_age_2 %>%
+        group_by(climate_concern, !!sym(var)) %>%
+        summarise(n = n(), .groups = "drop") %>%
+        group_by(climate_concern) %>%
+        mutate(percent = round(100 * n / sum(n), 1)) %>%
+        ungroup() %>%
+        mutate(variable = var) %>%
+        rename(level = !!sym(var))
+})
+
+cat_summary <- bind_rows(cat_tables)
+
+# Format as wide table with percent
+cat_summary_formatted <- cat_summary %>%
+    mutate(
+        value = paste0(n, " (", percent, "%)")
+    ) %>%
+    select(variable, level, climate_concern, value) %>%
+    pivot_wider(names_from = climate_concern, values_from = value) %>%
+    rename(Variable = variable, Category = level,
+           Low = `Low`, Medium = `Medium`, High = `High`) %>%
+    mutate(across(c(Low, Medium, High), as.character))
+
+# Insert blank rows to visually separate categories
+cat_summary_formatted <- cat_summary_formatted %>%
+    group_by(Variable) %>%
+    group_split() %>%
+    lapply(function(df) {
+        bind_rows(
+            data.frame(Variable = unique(df$Variable), Category = "", Low = "", Medium = "", High = ""),
+            df
+        )
+    }) %>%
+    bind_rows()
+
+# Step 3: Combine numeric and categorical summaries
+final_table <- bind_rows(
+    data.frame(Variable = "Sample Size and Age", Category = "", Low = "", Medium = "", High = ""),
+    desc_table_wide,
+    data.frame(Variable = "Categorical Variables", Category = "", Low = "", Medium = "", High = ""),
+    cat_summary_formatted
+)
+
+# Step 4: Export to CSV
+write_csv(final_table, "descriptive_statistics_climate_concern.csv")
+
+
+
+
+
+
+
+
+
 
 
