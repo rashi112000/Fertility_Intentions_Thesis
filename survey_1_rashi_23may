@@ -1,9 +1,11 @@
 # Today we will use data cleaned by chiara to see what we want to do 
+# in thesis folder 
 
 library(dplyr)
 library(stringr)
 library(ggplot2)
-
+library(tidyr)
+library(janitor)
 # Loading the data 
 
 getwd()
