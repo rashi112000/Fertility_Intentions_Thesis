@@ -9,6 +9,7 @@ install.packages("janitor")
 install.packages("knitr")
 install.packages("kableExtra")
 install.packages("readr")
+install.packages("webshot2")
 
 
 library(dplyr)
@@ -334,9 +335,85 @@ final_table <- bind_rows(
 write_csv(final_table, "descriptive_statistics_climate_concern.csv")
 
 
+#### TRYING TO MAKE IT SIMILAR TO OTHER TABLE 
+
+# renaming headings 
+final_table <- final_table %>%
+  mutate(
+    Section = case_when(
+      Characteristic == "Sample Size and Age" ~ "A. Sample Size and Age",
+      Characteristic == "Categorical Variables" ~ "B. Categorical Variables",
+      TRUE ~ ""
+    )
+  )
+
+
+# removing redundant categories 
+final_table <- final_table %>%
+  mutate(Characteristic = factor(
+    Characteristic,
+    levels = c(
+      "age_bracket",
+      "educational_qualification",
+      "employment_status_current",
+      "marital_status",
+      "net_income_monthly",
+      "present_children",
+      "sex_binary"
+    )
+  )) %>%
+  arrange(Characteristic)
 
 
 
+# replace NA and empty strings 
+final_table <- final_table %>%
+  mutate(across(where(is.character), ~ ifelse(. %in% c("", "NA"), "–", .)))
+
+
+
+# Step 1: Create total row with robust number extraction
+total_row <- final_table %>%
+  filter(Category != "") %>%  # Skip header rows
+  summarise(
+    Characteristic = "Total",
+    Category = "",
+    `Low Concern` = sum(as.numeric(gsub("[^0-9]", "", `Low Concern`)), na.rm = TRUE),
+    `Medium Concern` = sum(as.numeric(gsub("[^0-9]", "", `Medium Concern`)), na.rm = TRUE),
+    `High Concern` = sum(as.numeric(gsub("[^0-9]", "", `High Concern`)), na.rm = TRUE)
+  ) %>%
+  mutate(across(`Low Concern`:`High Concern`, ~ paste0(.x, " (100%)")))
+
+# Step 2: Append to your table
+final_table_with_total <- bind_rows(final_table, total_row)
+
+or 
+
+# Step 1: Clean and prepare total row
+total_row <- final_table %>%
+  filter(Category != "") %>%
+  summarise(
+    Characteristic = "Total",
+    Category = "",
+    `Low Concern` = sum(as.numeric(gsub("[^0-9]", "", `Low Concern`)), na.rm = TRUE),
+    `Medium Concern` = sum(as.numeric(gsub("[^0-9]", "", `Medium Concern`)), na.rm = TRUE),
+    `High Concern` = sum(as.numeric(gsub("[^0-9]", "", `High Concern`)), na.rm = TRUE)
+  ) %>%
+  mutate(across(`Low Concern`:`High Concern`, ~ paste0(.x, " (100%)")))
+
+# Step 2: Append to main table
+final_table_with_total <- bind_rows(final_table, total_row)
+
+# Step 3: Replace empty strings in `Characteristic` with NA for better readability
+final_table_with_total$Characteristic[final_table_with_total$Characteristic == ""] <- NA
+
+# Optional: Fill downward for cleaner appearance in spreadsheet
+library(tidyr)
+final_table_with_total <- final_table_with_total %>%
+  fill(Characteristic, .direction = "down")
+
+# Step 4: Save as CSV
+write.csv(final_table_with_total, "descriptive_statistics_climate_concern.csv", row.names = FALSE)
 
 
 
