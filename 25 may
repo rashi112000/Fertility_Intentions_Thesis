@@ -398,6 +398,119 @@ library(webshot2)
 gtsave(my_table, "table1.docx")
 
 
+# ANOTHER TABLE
+
+library(dplyr)
+library(gt)
+library(tidyr)
+
+# Helper: manual percent formatter
+format_percent <- function(x, digits = 1) {
+    paste0(round(100 * x, digits), "%")
+}
+
+# Custom summarization function with Total column
+summarize_by_group <- function(data, variable, group_var = "climate_concern") {
+    # Grouped counts
+    grouped_counts <- data %>%
+        mutate(!!sym(group_var) := factor(!!sym(group_var),
+                                          levels = c("Low concern", "Medium concern", "High concern"))) %>%
+        count(!!sym(group_var), !!sym(variable)) %>%
+        group_by(!!sym(group_var)) %>%
+        mutate(perc = n / sum(n),
+               label = paste0(n, " (", format_percent(perc), ")")) %>%
+        ungroup()
+    
+    # Total counts
+    total_counts <- data %>%
+        count(!!sym(variable)) %>%
+        mutate(label = paste0(n, " (", format_percent(n / sum(n)), ")"),
+               !!sym(group_var) := "Total")
+    
+    # Combine and pivot
+    bind_rows(grouped_counts, total_counts) %>%
+        select(!!sym(group_var), !!sym(variable), label) %>%
+        pivot_wider(names_from = !!sym(group_var), values_from = label) %>%
+        rename(Category = !!sym(variable))
+}
+
+# Build each section
+age_tab <- summarize_by_group(reproductive_age_cleaned, "age_bracket") %>%
+    mutate(section = "AGE")
+
+# Add Age mean/sd as final row
+age_stats <- reproductive_age_cleaned %>%
+    group_by(climate_concern = factor(climate_concern, levels = c("Low concern", "Medium concern", "High concern"))) %>%
+    summarise(mean = round(mean(age), 1), sd = round(sd(age), 1)) %>%
+    mutate(label = paste0(mean, " (", sd, ")")) %>%
+    select(climate_concern, label) %>%
+    pivot_wider(names_from = climate_concern, values_from = label) %>%
+    mutate(
+        Category = "Mean (S.D.) of Age",
+        Total = paste0(round(mean(reproductive_age_cleaned$age), 1), 
+                       " (", round(sd(reproductive_age_cleaned$age), 1), ")"),
+        section = "AGE"
+    ) %>%
+    select(Category, `Low concern`, `Medium concern`, `High concern`, Total, section)
+
+children_tab <- summarize_by_group(reproductive_age_cleaned, "present_children") %>%
+    mutate(section = "PRESENT CHILDREN")
+
+edu_tab <- summarize_by_group(reproductive_age_cleaned, "educational_qualification") %>%
+    mutate(section = "EDUCATION")
+
+emp_tab <- summarize_by_group(reproductive_age_cleaned, "employment_current") %>%
+    mutate(section = "EMPLOYMENT STATUS")
+
+income_tab <- summarize_by_group(reproductive_age_cleaned, "income_monthly") %>%
+    mutate(section = "INCOME")
+
+marital_tab <- summarize_by_group(reproductive_age_cleaned, "marital_status_current") %>%
+    mutate(section = "MARITAL STATUS")
+
+sex_tab <- summarize_by_group(reproductive_age_cleaned, "sex") %>%
+    mutate(section = "SEX")
+
+# Combine all and reorder
+final_table <- bind_rows(
+    age_tab,
+    age_stats,
+    children_tab,
+    edu_tab,
+    emp_tab,
+    income_tab,
+    marital_tab,
+    sex_tab
+)
+
+# Generate table using gt
+table_1 <- final_table %>%
+    arrange(factor(section, levels = c("AGE", "PRESENT CHILDREN", "EDUCATION",
+                                       "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS", "SEX"))) %>%
+    gt(groupname_col = "section") %>%
+    tab_header(
+        title = md("**Table 1. Characteristics of Reproductive-Aged Respondents (18–50) Grouped by Climate Change Concern**")
+    ) %>%
+    cols_label(
+        Category = "Category",
+        `Low concern` = "Low concern",
+        `Medium concern` = "Medium concern",
+        `High concern` = "High concern",
+        Total = "Total"
+    ) %>%
+    sub_missing(missing_text = "")
+
+table_1
+
+# to save it 
+
+library(webshot2)
+gtsave(table_1, "table2.docx")
+
+
+
+
+
 
 
 
