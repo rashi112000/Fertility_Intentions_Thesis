@@ -587,6 +587,80 @@ for (var in variables_to_debug) {
 # Saved: marital_status_current_debug_table.csv
 # Saved: sex_debug_table.csv>
 
+# COMBINING THE DEBUG FILE 
+# Load required libraries
+library(dplyr)
+library(tidyr)
+
+# Helper: format percentages
+format_percent <- function(x, digits = 1) {
+  paste0(round(100 * x, digits), "%")
+}
+
+# Debug summarization function
+summarize_by_group_debug <- function(data, variable, group_var = "climate_concern") {
+  data <- data %>%
+    mutate(!!sym(group_var) := factor(!!sym(group_var),
+                                      levels = c("Low concern", "Medium concern", "High concern")))
+
+  grouped_counts <- data %>%
+    count(!!sym(group_var), !!sym(variable)) %>%
+    group_by(!!sym(group_var)) %>%
+    mutate(
+      total_n = sum(n),
+      perc = n / total_n,
+      label = paste0(n, " (", format_percent(perc), ")"),
+      type = "Grouped"
+    ) %>%
+    ungroup()
+
+  total_counts <- data %>%
+    count(!!sym(variable)) %>%
+    mutate(
+      total_n = sum(n),
+      perc = n / total_n,
+      label = paste0(n, " (", format_percent(perc), ")"),
+      !!sym(group_var) := "Total",
+      type = "Total"
+    )
+
+  bind_rows(grouped_counts, total_counts) %>%
+    rename(
+      Category = !!sym(variable),
+      Group = !!sym(group_var),
+      Count = n,
+      Total_in_Group = total_n,
+      Percentage = perc,
+      Label = label
+    ) %>%
+    mutate(Variable = variable) %>%
+    select(Variable, Category, Group, Count, Total_in_Group, Percentage, Label, type)
+}
+
+# List of variables to debug
+variables_to_debug <- c(
+  "age_bracket",
+  "present_children",
+  "educational_qualification",
+  "employment_current",
+  "income_monthly",
+  "marital_status_current",
+  "sex"
+)
+
+# Combine all debug tables
+all_debug_data <- bind_rows(
+  lapply(variables_to_debug, function(var) {
+    summarize_by_group_debug(reproductive_age_cleaned, var)
+  })
+)
+
+# Export to CSV
+write.csv(all_debug_data, file = "combined_debug_table.csv", row.names = FALSE)
+message("✅ Combined debug table saved as: combined_debug_table.csv")
+
+
+
 
 
 
