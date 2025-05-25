@@ -1,0 +1,128 @@
+# Today we will use data cleaned by chiara to see what we want to do 
+# in thesis folder 
+
+install.packages("dplyr")
+install.packages("stringr")
+install.packages("ggplot2")
+install.packages("tidyr")
+install.packages("janitor")
+
+
+
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+library(janitor)
+
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+#Combining Columns of T0 & T1 
+
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+sum(is.na(data2$concern_combined2)) # 0
+sum(is.na(data2$ideal_children_society2)) #0
+sum(is.na(data2$ideal_children_personally2)) #0
+
+typeof(data2$numeric_birth_year) #integer
+
+range(data2$numeric_birth_year, na.rm = TRUE) # 1933 2008
+data2$age <- 2025 - data2$numeric_birth_year
+print(data2$age)
+
+mean <- mean(data2$age, na.rm = TRUE)
+
+# Choosing respondants who are in reproductive age (18-50)
+reproductive_age_2 <- data2[data2$age >= 18 & data2$age <= 50, ]
+reproductive_age_2$age
+
+sum(is.na(reproductive_age_2$age)) #17
+
+# dropping NA 
+reproductive_age_2 <- data2[!is.na(data2$age) & data2$age >= 18 & data2$age <= 50, ]
+sum(is.na(reproductive_age_2$age)) # 0
+
+# Converting data to lowercase for easier pattern recognition
+reproductive_age_2 <- reproductive_age_2 %>%
+    mutate(concern_combined2 = str_to_lower(concern_combined2))
+
+#Categorising data for plotting 
+
+reproductive_age_2 <- reproductive_age_2 %>%
+    mutate(concern_category = case_when(
+        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+        TRUE ~ NA_character_
+    ))
+
+sum(is.na(reproductive_age_2$concern_category)) # 0
+
+ # Calculate the count and percentage for each category
+category_counts <- reproductive_age_2 %>%
+    count(concern_category) %>%
+    mutate(percentage = n / sum(n) * 100)
+
+print(category_counts)
+
+# For descriptive statistics
+# Using these 
+count(reproductive_age_2, concern_category)
+count(reproductive_age_2, sex)
+count(reproductive_age_2, numeric_number_children)
+count(reproductive_age_2, education)
+count(reproductive_age_2, employment_status)
+count(reproductive_age_2, net_income_month)
+count(reproductive_age_2, mar_status)
+count(reproductive_age_2, age)
+
+
+# FILTER DATASET AND KEEP ONLY MALE AND FEMALE VALUES
+reproductive_age_cleaned <- reproductive_age_2 %>%
+    filter(sex %in% c("Male", "Female"))
+
+# USING THIS NOW TO CATEGORIZE NUMBER OF CHILDREN 
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+    mutate(children_group = case_when(
+        numeric_number_children == 0 ~ "0",
+        numeric_number_children == 1 ~ "1",
+        numeric_number_children == 2 ~ "2",
+        numeric_number_children >= 3 ~ "3 or more",
+        is.na(numeric_number_children) ~ NA_character_
+    ))
+
+# Renaming it 
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  rename(present_children = children_group)
+
+# Dropping NA
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  filter(!is.na(present_children))
+
+# CATEGORIZE EDUCATION 
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(education_group = case_when(
+    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+    education == "No educational qualification" ~ "No education",
+    TRUE ~ NA_character_
+  ))
+
+# RENAMING 
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  rename(educational_qualification = education_group)
+
+count(reproductive_age_cleaned, educational_qualification)
+
+
+
+
+
+    
