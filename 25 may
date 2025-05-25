@@ -505,10 +505,87 @@ table_1
 # to save it 
 
 library(webshot2)
-gtsave(table_1, "table2.docx")
+gtsave(table_1, "table1.docx")
 
+# CREATING A DEBUG FILE TO CHECK IF INDIVIDUAL VALUES ARE CALCULATE CORRECTLY
 
+# Load required libraries
+library(dplyr)
+library(tidyr)
 
+# Helper: format percentages
+format_percent <- function(x, digits = 1) {
+  paste0(round(100 * x, digits), "%")
+}
+
+# Debug summarizer
+summarize_by_group_debug <- function(data, variable, group_var = "climate_concern") {
+  data <- data %>%
+    mutate(!!sym(group_var) := factor(!!sym(group_var),
+                                      levels = c("Low concern", "Medium concern", "High concern")))
+
+  # Grouped counts
+  grouped_counts <- data %>%
+    count(!!sym(group_var), !!sym(variable)) %>%
+    group_by(!!sym(group_var)) %>%
+    mutate(
+      total_n = sum(n),
+      perc = n / total_n,
+      label = paste0(n, " (", format_percent(perc), ")"),
+      type = "Grouped"
+    ) %>%
+    ungroup()
+
+  # Total counts
+  total_counts <- data %>%
+    count(!!sym(variable)) %>%
+    mutate(
+      total_n = sum(n),
+      perc = n / total_n,
+      label = paste0(n, " (", format_percent(perc), ")"),
+      !!sym(group_var) := "Total",
+      type = "Total"
+    )
+
+  # Combine
+  bind_rows(grouped_counts, total_counts) %>%
+    rename(
+      Category = !!sym(variable),
+      Group = !!sym(group_var),
+      Count = n,
+      Total_in_Group = total_n,
+      Percentage = perc,
+      Label = label
+    ) %>%
+    select(Category, Group, Count, Total_in_Group, Percentage, Label, type)
+}
+
+# List of variables to debug
+variables_to_debug <- c(
+  "age_bracket",
+  "present_children",
+  "educational_qualification",
+  "employment_current",
+  "income_monthly",
+  "marital_status_current",
+  "sex"
+)
+
+# Loop over variables and export debug CSVs
+for (var in variables_to_debug) {
+  debug_data <- summarize_by_group_debug(reproductive_age_cleaned, var)
+  filename <- paste0(var, "_debug_table.csv")
+  write.csv(debug_data, file = filename, row.names = FALSE)
+  message("Saved: ", filename)
+}
+ # SAVED AS 
+# Saved: age_bracket_debug_table.csv
+# Saved: present_children_debug_table.csv
+# Saved: educational_qualification_debug_table.csv
+# Saved: employment_current_debug_table.csv
+# Saved: income_monthly_debug_table.csv
+# Saved: marital_status_current_debug_table.csv
+# Saved: sex_debug_table.csv>
 
 
 
