@@ -1,6 +1,3 @@
-# Today we will use data cleaned by chiara to see what we want to do 
-# in thesis folder 
-
 install.packages("dplyr")
 install.packages("stringr")
 install.packages("ggplot2")
@@ -9,7 +6,6 @@ install.packages("janitor")
 install.packages("gt)
 install.packages("webshot2")
 install.packages("officer")
-
 
 library(dplyr)
 library(stringr)
@@ -73,7 +69,12 @@ category_counts <- reproductive_age_2 %>%
 
 print(category_counts)
 
+
+# Did plot, code is in another file 
+
+
 # For descriptive statistics
+
 # Using these 
 count(reproductive_age_2, concern_category)
 count(reproductive_age_2, sex)
@@ -100,7 +101,7 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
         is.na(numeric_number_children) ~ NA_character_
     ))
 
-# Renaming it 
+# RENAMING IT
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
   rename(present_children = children_group)
 
@@ -135,14 +136,14 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
     TRUE ~ NA_character_
   ))
 
-# RENMAING
+# RENAMING
 
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
   rename(employment_current = employment_group)
 
 # CATEGORIZING MARITAL STATUS 
 
-# First, standardize spelling & format inconsistencies if needed
+# First, standardize spelling & format inconsistencies
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
     mutate(mar_status = case_when(
         marital_status %in% c("De facto seperated", "Legally seperated", "Divorced") ~ "De facto or legally separated/Divorced",
@@ -206,12 +207,11 @@ library(dplyr)
 library(gt)
 library(tidyr)
 
-# Helper: manual percent formatter
+
 format_percent <- function(x, digits = 1) {
     paste0(round(100 * x, digits), "%")
 }
 
-# Custom summarization function with Total column
 summarize_by_group <- function(data, variable, group_var = "climate_concern") {
     # Grouped counts
     grouped_counts <- data %>%
@@ -236,7 +236,7 @@ summarize_by_group <- function(data, variable, group_var = "climate_concern") {
         rename(Category = !!sym(variable))
 }
 
-# Build each section
+# Building each section
 age_tab <- summarize_by_group(reproductive_age_cleaned, "age_bracket") %>%
     mutate(section = "AGE")
 
