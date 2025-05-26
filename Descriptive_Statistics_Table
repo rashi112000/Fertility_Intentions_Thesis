@@ -1,0 +1,223 @@
+# Load Libraries
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+library(janitor)
+library(gt)
+library(webshot2)
+library(officer)
+
+# Load Data
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# Combine T0 & T1 Columns
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# Calculate Age
+data2$age <- 2025 - data2$numeric_birth_year
+
+# Filter for reproductive age (18–50) and drop missing
+reproductive_age_2 <- data2[!is.na(data2$age) & data2$age >= 18 & data2$age <= 50, ]
+
+# Lowercase concern for pattern matching
+reproductive_age_2 <- reproductive_age_2 %>%
+  mutate(concern_combined2 = str_to_lower(concern_combined2))
+
+# Categorize climate concern
+reproductive_age_2 <- reproductive_age_2 %>%
+  mutate(concern_category = case_when(
+    str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+    str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+    str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+    str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+    TRUE ~ NA_character_
+  ))
+
+# Filter only Male and Female respondents
+reproductive_age_cleaned <- reproductive_age_2 %>%
+  filter(sex %in% c("Male", "Female"))
+
+# Categorize number of children
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(children_group = case_when(
+    numeric_number_children == 0 ~ "0",
+    numeric_number_children == 1 ~ "1",
+    numeric_number_children == 2 ~ "2",
+    numeric_number_children >= 3 ~ "3 or more",
+    is.na(numeric_number_children) ~ NA_character_
+  )) %>%
+  rename(present_children = children_group) %>%
+  filter(!is.na(present_children))
+
+# Categorize education
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(education_group = case_when(
+    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+    education == "No educational qualification" ~ "No education",
+    TRUE ~ NA_character_
+  )) %>%
+  rename(educational_qualification = education_group)
+
+# Categorize employment
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(employment_group = case_when(
+    employment_status == "Worker" ~ "Working",
+    employment_status == "Student" ~ "Student",
+    employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+    TRUE ~ NA_character_
+  )) %>%
+  rename(employment_current = employment_group)
+
+# Categorize marital status
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(mar_status = case_when(
+    marital_status %in% c("De facto seperated", "Legally seperated", "Divorced") ~ "De facto or legally separated/Divorced",
+    marital_status == "Widower" ~ "Widow",
+    marital_status == "Single/Unmarried" ~ "Single/unmarried",
+    TRUE ~ marital_status
+  )) %>%
+  mutate(marital_status_current = case_when(
+    mar_status == "Married" ~ "Married",
+    mar_status %in% c("Single/unmarried", "De facto or legally separated/Divorced", "Widow") ~ "Not married",
+    TRUE ~ NA_character_
+  ))
+
+# Categorize income
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(income_monthly = case_when(
+    net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+    net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+    net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+    net_income_month == "Don't know" ~ NA_character_,
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(income_monthly))
+
+# Categorize age brackets
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(age_bracket = cut(age,
+                           breaks = c(17, 24, 29, 34, 39, 44, 50),
+                           labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                           right = TRUE))
+
+# Group climate concern
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(climate_concern_group = case_when(
+    concern_category == "UNCONCERNED" ~ "Low concern",
+    concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
+    concern_category == "EXTREMELY CONCERNED" ~ "High concern",
+    TRUE ~ NA_character_
+  )) %>%
+  rename(climate_concern = climate_concern_group)
+
+# Summary Table Helper
+format_percent <- function(x, digits = 1) {
+  paste0(round(100 * x, digits), "%")
+}
+
+summarize_by_group <- function(data, variable, group_var = "climate_concern") {
+  grouped_counts <- data %>%
+    mutate(!!sym(group_var) := factor(!!sym(group_var),
+                                      levels = c("Low concern", "Medium concern", "High concern"))) %>%
+    count(!!sym(group_var), !!sym(variable)) %>%
+    group_by(!!sym(group_var)) %>%
+    mutate(perc = n / sum(n),
+           label = paste0(n, " (", format_percent(perc), ")")) %>%
+    ungroup()
+  
+  total_counts <- data %>%
+    count(!!sym(variable)) %>%
+    mutate(label = paste0(n, " (", format_percent(n / sum(n)), ")"),
+           !!sym(group_var) := "Total")
+  
+  bind_rows(grouped_counts, total_counts) %>%
+    select(!!sym(group_var), !!sym(variable), label) %>%
+    pivot_wider(names_from = !!sym(group_var), values_from = label) %>%
+    rename(Category = !!sym(variable))
+}
+
+# Table Sections
+age_tab <- summarize_by_group(reproductive_age_cleaned, "age_bracket") %>%
+  mutate(section = "AGE")
+
+age_stats <- reproductive_age_cleaned %>%
+  group_by(climate_concern = factor(climate_concern, levels = c("Low concern", "Medium concern", "High concern"))) %>%
+  summarise(mean = round(mean(age), 1), sd = round(sd(age), 1)) %>%
+  mutate(label = paste0(mean, " (", sd, ")")) %>%
+  select(climate_concern, label) %>%
+  pivot_wider(names_from = climate_concern, values_from = label) %>%
+  mutate(
+    Category = "Mean (S.D.) of Age",
+    Total = paste0(round(mean(reproductive_age_cleaned$age), 1),
+                   " (", round(sd(reproductive_age_cleaned$age), 1), ")"),
+    section = "AGE"
+  ) %>%
+  select(Category, `Low concern`, `Medium concern`, `High concern`, Total, section)
+
+children_tab <- summarize_by_group(reproductive_age_cleaned, "present_children") %>%
+  mutate(section = "PRESENT CHILDREN")
+
+edu_tab <- summarize_by_group(reproductive_age_cleaned, "educational_qualification") %>%
+  mutate(section = "EDUCATION")
+
+# FIXED: EMPLOYMENT STATUS order
+emp_tab <- reproductive_age_cleaned %>%
+  mutate(employment_current = factor(employment_current,
+                                     levels = c("Working", "Student", "Unemployed/Inactive/Retired"))) %>%
+  summarize_by_group("employment_current") %>%
+  mutate(section = "EMPLOYMENT STATUS")
+
+# FIXED: INCOME order
+income_tab <- reproductive_age_cleaned %>%
+  mutate(income_monthly = factor(income_monthly,
+                                 levels = c("High income", "Middle income", "Low income"))) %>%
+  summarize_by_group("income_monthly") %>%
+  mutate(section = "INCOME")
+
+marital_tab <- summarize_by_group(reproductive_age_cleaned, "marital_status_current") %>%
+  mutate(section = "MARITAL STATUS")
+
+sex_tab <- summarize_by_group(reproductive_age_cleaned, "sex") %>%
+  mutate(section = "SEX")
+
+# Combine and Create Final Table
+final_table <- bind_rows(
+  age_tab,
+  age_stats,
+  children_tab,
+  edu_tab,
+  emp_tab,
+  income_tab,
+  marital_tab,
+  sex_tab
+)
+
+# Generate Table 1
+table_1 <- final_table %>%
+  arrange(factor(section, levels = c("AGE", "PRESENT CHILDREN", "EDUCATION",
+                                     "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS", "SEX"))) %>%
+  gt(groupname_col = "section") %>%
+  tab_header(
+    title = md("**Table 1. Characteristics of Reproductive-Aged Respondents (18–50) Grouped by Climate Change Concern**")
+  ) %>%
+  cols_label(
+    Category = "Category",
+    `Low concern` = "Low concern",
+    `Medium concern` = "Medium concern",
+    `High concern` = "High concern",
+    Total = "Total"
+  ) %>%
+  sub_missing(missing_text = "")
+
+# View the final table
+table_1
+
+# To save as in word
+gtsave(table_1, "table1.docx")
+
+# Save gt table as an HTML file
+gtsave(table_1, "Table1_Climate_Concern.html")
