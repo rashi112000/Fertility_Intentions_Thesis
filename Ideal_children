@@ -1,6 +1,5 @@
 install.packages("writexl")
 
-
 # Categorising Ideal number of children according to society and personally 
 
 # FIRST UP IDEAL CHILDREN PERSONALLY
@@ -49,6 +48,20 @@ side_by_side <- reproductive_age_cleaned %>%
 
 write_xlsx(side_by_side, "translation_check.xlsx")
 
+# we are seeing 5 responses that are blank so let us convert them to NA 
+
+# Checking for blank string 
+reproductive_age_cleaned %>% 
+  filter(ideal_children_personally_english == "") %>% 
+  count() # 5
+
+# Converting empty string to NA 
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(ideal_children_personally_english = na_if(ideal_children_personally_english, ""))
+
+# Checking 
+count(reproductive_age_cleaned, ideal_children_personally_english)
+
 
 
 # Now translating IDEAL CHILDREN SOCIETY 
@@ -71,4 +84,32 @@ reproductive_age_cleaned %>%
 
 count(reproductive_age_cleaned, ideal_children_society_english)
 
+# Checking for blank string 
+reproductive_age_cleaned %>%
+  filter(ideal_children_society_english == "") %>%
+  count()
+
+# Replacing blank with NA
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(ideal_children_society_english = na_if(ideal_children_society_english, ""))
+
+# checking 
+
+count(reproductive_age_cleaned, ideal_children_society_english) # 1
+
+# We are still getting it that means it is not an empty string but something else 
+# A string with only whitespace (like " " or "\t")
+# An invisible non-breaking space (\u00A0) or other special character
+
+library(dplyr)
+library(stringr)
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(
+    ideal_children_society_english = ideal_children_society_english %>%
+      str_squish() %>%                  # Remove surrounding and repeated whitespace
+      na_if("")                         # Convert empty string to NA
+  )
+
+count(reproductive_age_cleaned, ideal_children_society_english)
 
