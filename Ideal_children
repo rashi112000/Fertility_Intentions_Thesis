@@ -119,17 +119,17 @@ count(reproductive_age_cleaned, ideal_children_society_english)
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
   mutate(
     ideal_children_society_grouped_v3 = case_when(
-      # Group 0-1: exact 0 or 1
+      # Group 0-1: for low fertility preferences
       ideal_children_society_english %in% c("0", "1") ~ "0-1",
 
-      # Group 2: exact 2, and rounding 1.5 to 2
+      # Group 2: includes rounding from 1.5
       ideal_children_society_english %in% c("1.5", "2") ~ "2",
 
-      # Group 3 or more: values 2.5, 3, 4, 5, 6, 7, 9, 10
-      ideal_children_society_english %in% c("2.5", "3", "4", "5", "6", "7", "9", "10") ~ "3 or more",
+      # Group 3 or more: up to 5
+      ideal_children_society_english %in% c("2.5", "3", "4", "5") ~ "3 or more",
 
-      # Group Hyper-normative Fertility ideals
-      ideal_children_society_english %in% c("11", "16", "20", "21", "34", "50", "69", "90", "100", "200") ~ "Hyper-normative Fertility ideals",
+      # Group Numerical extremes: from 6 and higher, includes outliers
+      ideal_children_society_english %in% c("6", "7", "9", "10", "11", "16", "20", "21", "34", "50", "69", "90", "100", "200") ~ "Numerical extremes",
 
       # Group No ideal number / Unclear
       str_to_lower(ideal_children_society_english) %in% c(
@@ -148,21 +148,21 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
         "3 or more"  # ambiguous phrasing
       ) ~ "No ideal number/Unclear",
 
-      # Mark known junk values as NA
+      # Known junk or invalid entries set to NA
       ideal_children_society_english %in% c("Q", "L", "Florence", "Cgg", "w") ~ NA_character_,
 
-      # Preserve existing NAs
+      # Preserve missing values
       TRUE ~ NA_character_
     ),
 
-    # Convert to a factor with ordered levels for analysis
+    # Convert to ordered factor for analysis
     ideal_children_society_grouped_v3 = factor(
       ideal_children_society_grouped_v3,
       levels = c(
         "0-1", 
         "2", 
         "3 or more", 
-        "Hyper-normative Fertility ideals", 
+        "Numerical extremes", 
         "No ideal number/Unclear"
       )
     )
@@ -173,23 +173,22 @@ count(reproductive_age_cleaned, ideal_children_society_grouped_v3)
 
 # CODING FOR IDEAL CHILDREN PERSONALLY
 
-# Recode 'ideal_children_personally_english' into simplified categories
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
   mutate(
     ideal_children_personally_grouped = case_when(
-      # Group 0-1
+      # Group 0-1: includes "1 child" and similar entries
       ideal_children_personally_english %in% c("0", "1", "1 child", "undeniably 0") ~ "0-1",
 
-      # Group 2 (include 1.5 and 2.5)
+      # Group 2: includes rounding values like 1.5 and 2.5
       ideal_children_personally_english %in% c("1.5", "2", "2.5") ~ "2",
 
-      # Group 3 or more (reasonable values)
-      ideal_children_personally_english %in% c("3", "4", "5", "6", "7", "7.5", "8") ~ "3 or more",
+      # Group 3 or more: moderate, realistic numbers up to 5
+      ideal_children_personally_english %in% c("3", "4", "5") ~ "3 or more",
 
-      # Group Hyper-normative Fertility ideals
-      ideal_children_personally_english %in% c("10", "11", "16", "17", "32", "90", "200") ~ "Hyper-normative Fertility ideals",
+      # Group Numerical extremes: very high or unusual values from 6 and up
+      ideal_children_personally_english %in% c("6", "7", "7.5", "8", "10", "11", "16", "17", "32", "90", "200") ~ "Numerical extremes",
 
-      # Group No ideal number / Unclear
+      # Group No ideal number / Unclear: philosophical, vague, or ambiguous responses
       str_to_lower(ideal_children_personally_english) %in% c(
         "no", 
         "none", 
@@ -204,21 +203,21 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
         "as many as i have now"
       ) ~ "No ideal number/Unclear",
 
-      # Junk or unclear values coded to NA
+      # Mark junk or invalid values as NA
       ideal_children_personally_english %in% c("b", "gg", "shej", "02 Jan", "03 Feb", "03 Apr") ~ NA_character_,
 
       # Preserve existing NA
       TRUE ~ NA_character_
     ),
 
-    # Convert to factor with ordered levels
+    # Convert to ordered factor for modeling/plotting
     ideal_children_personally_grouped = factor(
       ideal_children_personally_grouped,
       levels = c(
         "0-1", 
         "2", 
         "3 or more", 
-        "Hyper-normative Fertility ideals", 
+        "Numerical extremes", 
         "No ideal number/Unclear"
       )
     )
