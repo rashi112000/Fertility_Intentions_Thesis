@@ -221,3 +221,10 @@ gtsave(table_1, "table1.docx")
 
 # Save gt table as an HTML file
 gtsave(table_1, "Table1_Climate_Concern.html")
+
+
+# Checking to see if there is any no education respondant with high concern 
+reproductive_age_cleaned %>%
+  filter(educational_qualification == "No education", climate_concern == "High concern") %>%
+  count()
+# 0 - there is not 
