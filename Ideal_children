@@ -113,3 +113,119 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
 
 count(reproductive_age_cleaned, ideal_children_society_english)
 
+
+# CODING FOR IDEAL CHILDREN SOCIETY 
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(
+    ideal_children_society_grouped_v3 = case_when(
+      # Group 0-1: exact 0 or 1
+      ideal_children_society_english %in% c("0", "1") ~ "0-1",
+
+      # Group 2: exact 2, and rounding 1.5 to 2
+      ideal_children_society_english %in% c("1.5", "2") ~ "2",
+
+      # Group 3 or more: values 2.5, 3, 4, 5, 6, 7, 9, 10
+      ideal_children_society_english %in% c("2.5", "3", "4", "5", "6", "7", "9", "10") ~ "3 or more",
+
+      # Group Hyper-normative Fertility ideals
+      ideal_children_society_english %in% c("11", "16", "20", "21", "34", "50", "69", "90", "100", "200") ~ "Hyper-normative Fertility ideals",
+
+      # Group No ideal number / Unclear
+      str_to_lower(ideal_children_society_english) %in% c(
+        "no ideal number", 
+        "i don't think there is an ideal number", 
+        "there is no ideal number", 
+        "there's no ideal number",
+        "don't know", 
+        "as many as one can afford", 
+        "as many as one wishes", 
+        "depends where one lives", 
+        "yes", 
+        "not important", 
+        "question too absurd", 
+        "the more the better, they say",
+        "3 or more"  # ambiguous phrasing
+      ) ~ "No ideal number/Unclear",
+
+      # Mark known junk values as NA
+      ideal_children_society_english %in% c("Q", "L", "Florence", "Cgg", "w") ~ NA_character_,
+
+      # Preserve existing NAs
+      TRUE ~ NA_character_
+    ),
+
+    # Convert to a factor with ordered levels for analysis
+    ideal_children_society_grouped_v3 = factor(
+      ideal_children_society_grouped_v3,
+      levels = c(
+        "0-1", 
+        "2", 
+        "3 or more", 
+        "Hyper-normative Fertility ideals", 
+        "No ideal number/Unclear"
+      )
+    )
+  )
+
+count(reproductive_age_cleaned, ideal_children_society_grouped_v3)
+
+
+# CODING FOR IDEAL CHILDREN PERSONALLY
+
+# Recode 'ideal_children_personally_english' into simplified categories
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(
+    ideal_children_personally_grouped = case_when(
+      # Group 0-1
+      ideal_children_personally_english %in% c("0", "1", "1 child", "undeniably 0") ~ "0-1",
+
+      # Group 2 (include 1.5 and 2.5)
+      ideal_children_personally_english %in% c("1.5", "2", "2.5") ~ "2",
+
+      # Group 3 or more (reasonable values)
+      ideal_children_personally_english %in% c("3", "4", "5", "6", "7", "7.5", "8") ~ "3 or more",
+
+      # Group Hyper-normative Fertility ideals
+      ideal_children_personally_english %in% c("10", "11", "16", "17", "32", "90", "200") ~ "Hyper-normative Fertility ideals",
+
+      # Group No ideal number / Unclear
+      str_to_lower(ideal_children_personally_english) %in% c(
+        "no", 
+        "none", 
+        "no ideal number", 
+        "i don't know", 
+        "i don't know, i don't wish to have children at the moment", 
+        "i can't answer, the question is inadmissible", 
+        "don't know",
+        "many",
+        "i reiterate what i wrote above",
+        "fewer than i have now, one more to feel good but too many",
+        "as many as i have now"
+      ) ~ "No ideal number/Unclear",
+
+      # Junk or unclear values coded to NA
+      ideal_children_personally_english %in% c("b", "gg", "shej", "02 Jan", "03 Feb", "03 Apr") ~ NA_character_,
+
+      # Preserve existing NA
+      TRUE ~ NA_character_
+    ),
+
+    # Convert to factor with ordered levels
+    ideal_children_personally_grouped = factor(
+      ideal_children_personally_grouped,
+      levels = c(
+        "0-1", 
+        "2", 
+        "3 or more", 
+        "Hyper-normative Fertility ideals", 
+        "No ideal number/Unclear"
+      )
+    )
+  )
+
+count(reproductive_age_cleaned, ideal_children_personally_grouped)
+
+
+
+
