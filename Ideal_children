@@ -1,0 +1,74 @@
+install.packages("writexl")
+
+
+# Categorising Ideal number of children according to society and personally 
+
+# FIRST UP IDEAL CHILDREN PERSONALLY
+
+# First translating italian responses to english 
+# Made a column ideal_children_personally_clean by mistake- unsee it 
+# Use only ideal_children_personally_english
+
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(
+    ideal_children_personally2 = str_trim(str_to_lower(ideal_children_personally2)),  # clean whitespace + lower
+    ideal_children_personally_english = case_when(
+      ideal_children_personally2 == "nessuno" ~ "None",
+      ideal_children_personally2 == "non ho un numero ideale" ~ "No ideal number",
+      ideal_children_personally2 == "non lo so" ~ "I don't know",
+      str_detect(ideal_children_personally2, "non saprei.*desidero") ~ "I don't know, I don't wish to have children at the moment",
+      str_detect(ideal_children_personally2, "non so rispondere") ~ "I can't answer, the question is inadmissible",
+      ideal_children_personally2 == "quanti ne ho ora" ~ "As many as I have now",
+      ideal_children_personally2 == "ribadisco quanto scritto sopra" ~ "I reiterate what I wrote above",
+      ideal_children_personally2 == "innegabilmente 0" ~ "Undeniably 0",
+      ideal_children_personally2 == "1 figlio" ~ "1 child",
+      str_detect(ideal_children_personally2, "meno di quelli che ho") ~ "Fewer than I have now, one more to feel good but too many",
+      ideal_children_personally2 == "don't know" ~ "Don't know",
+      TRUE ~ ideal_children_personally2  # keep unchanged if not translated
+    )
+  )
+
+# To view the results  
+
+count(reproductive_age_cleaned, ideal_children_personally_english)
+
+# Viewing total distint values 
+n_distinct(reproductive_age_cleaned$ideal_children_personally2)  # before
+n_distinct(reproductive_age_cleaned$ideal_children_personally_english)  # after
+
+# Confirming if values are translated or not 
+
+library(writexl)
+
+side_by_side <- reproductive_age_cleaned %>%
+    count(
+        original = ideal_children_personally2,
+        translated = ideal_children_personally_english
+    )
+
+write_xlsx(side_by_side, "translation_check.xlsx")
+
+
+
+# Now translating IDEAL CHILDREN SOCIETY 
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(
+    ideal_children_society_english = case_when(
+      str_trim(str_to_lower(ideal_children_society2)) == "più sono meglio è dicono" ~ "The more the better, they say",
+      str_trim(str_to_lower(ideal_children_society2)) == "domanda troppo assurda" ~ "Question too absurd",
+      str_trim(str_to_lower(ideal_children_society2)) == "firenze" ~ "Florence",
+      TRUE ~ ideal_children_society2  # Preserve original if no match
+    )
+  )
+
+
+reproductive_age_cleaned %>%
+  count(ideal_children_society2, ideal_children_society_english) %>%
+  arrange(desc(n))
+
+
+count(reproductive_age_cleaned, ideal_children_society_english)
+
+
