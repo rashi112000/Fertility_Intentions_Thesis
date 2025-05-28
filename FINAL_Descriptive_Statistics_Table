@@ -49,7 +49,7 @@ reproductive_age_2 <- reproductive_age_2 %>%
 reproductive_age_cleaned <- reproductive_age_2 %>%
   filter(sex %in% c("Male", "Female")) %>%
   
-  # Categorize number of children
+  # Categorizing number of children
   mutate(present_children = case_when(
     numeric_number_children == 0 ~ "0",
     numeric_number_children == 1 ~ "1",
@@ -59,7 +59,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
   )) %>%
   filter(!is.na(present_children)) %>%
 
-  # Simplify education levels
+  # Simplifying education levels
   mutate(educational_qualification = case_when(
     education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
     education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
@@ -67,7 +67,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     TRUE ~ NA_character_
   )) %>%
 
-  # Recode employment status
+  # Recoding employment status
   mutate(employment_current = case_when(
     employment_status == "Worker" ~ "Working",
     employment_status == "Student" ~ "Student",
@@ -75,14 +75,14 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     TRUE ~ NA_character_
   )) %>%
 
-  # Simplify marital status
+  # Simplifying marital status
   mutate(marital_status_current = case_when(
     marital_status == "Married" ~ "Married",
     marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
     TRUE ~ NA_character_
   )) %>%
 
-  # Group income brackets
+  # Grouping income brackets
   mutate(income_monthly = case_when(
     net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
     net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
@@ -91,13 +91,13 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
   )) %>%
   filter(!is.na(income_monthly)) %>%
 
-  # Create age brackets
+  # Creating age brackets
   mutate(age_bracket = cut(age,
                            breaks = c(17, 24, 29, 34, 39, 44, 50),
                            labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
                            right = TRUE)) %>%
 
-  # Create a 3-level climate concern variable
+  # Creating a 3-level climate concern variable
   mutate(climate_concern = case_when(
     concern_category == "UNCONCERNED" ~ "Low concern",
     concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
