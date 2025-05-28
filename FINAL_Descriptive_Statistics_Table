@@ -1,14 +1,14 @@
 # ---- Load Required Libraries ----
-library(dplyr)
-library(stringr)
-library(tidyr)
-library(gt)
-library(webshot2)
+library(dplyr)       # For data manipulation
+library(stringr)     # For string/text processing
+library(tidyr)       # For reshaping data
+library(gt)          # For creating summary tables
+library(webshot2)    # For saving tables as images or documents
 
 # ---- Load Dataset ----
 data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
 
-# ---- Combine Relevant Variables ----
+# ---- Combining Relevant Variables ----
 data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
 data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
 data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
@@ -16,7 +16,7 @@ data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
 # ---- Calculate Age ----
 data2$age <- 2025 - data2$numeric_birth_year
 
-# ---- Filter to Reproductive Age ----
+# ---- Filtering Reproductive Age Respondents ----
 reproductive_age_2 <- data2 %>%
   filter(!is.na(age), age >= 18, age <= 50)
 
