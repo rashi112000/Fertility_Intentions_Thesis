@@ -158,9 +158,13 @@ final_table <- bind_rows(
   marital_tab
 )
 
+# ---- Create Styled GT Table for Thesis ----
+
 table_1 <- final_table %>%
-  arrange(factor(section, levels = c("SEX", "AGE", "PRESENT CHILDREN", "EDUCATION",
-                                     "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS"))) %>%
+  arrange(factor(section, levels = c(
+    "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION",
+    "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS"
+  ))) %>%
   gt(groupname_col = "section") %>%
   tab_header(
     title = md("**Table 1. Characteristics of Reproductive-Aged Respondents (18–50) Grouped by Climate Change Concern**")
@@ -172,7 +176,24 @@ table_1 <- final_table %>%
     `High concern` = "High concern",
     Total = "Total"
   ) %>%
-  sub_missing(missing_text = "")
+  sub_missing(missing_text = "") %>%
+  tab_options(
+    table.font.names = c("Times New Roman", "serif"),
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    heading.title.font.weight = "bold",
+    row_group.font.weight = "bold",
+    column_labels.font.weight = "bold",
+    column_labels.font.size = 12,
+    data_row.padding = px(4),
+    table.border.top.color = "black",
+    table.border.bottom.color = "black",
+    row_group.border.top.color = "gray80",
+    row_group.border.bottom.color = "gray80",
+    row.striping.include_table_body = TRUE,
+    row.striping.background_color = "gray95"
+  )
+
 
 # ---- Save Table ----
 
