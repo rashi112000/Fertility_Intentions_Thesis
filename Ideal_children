@@ -178,11 +178,11 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
       # Group 0-1: includes "1 child" and similar entries
       ideal_children_personally_english %in% c("0", "1", "1 child", "undeniably 0") ~ "0-1",
 
-      # Group 2: includes rounding values like 1.5 and 2.5
-      ideal_children_personally_english %in% c("1.5", "2", "2.5") ~ "2",
+      # Group 2: includes rounding values like 1.5 
+      ideal_children_personally_english %in% c("1.5", "2") ~ "2",
 
-      # Group 3 or more: moderate, realistic numbers up to 5
-      ideal_children_personally_english %in% c("3", "4", "5") ~ "3 or more",
+      # Group 3 or more: moderate, realistic numbers up to 5 and rounding values like 2.5
+      ideal_children_personally_english %in% c("2.5", "3", "4", "5") ~ "3 or more",
 
       # Group Numerical extremes: very high or unusual values from 6 and up
       ideal_children_personally_english %in% c("6", "7", "7.5", "8", "10", "11", "16", "17", "32", "90", "200") ~ "Numerical extremes",
