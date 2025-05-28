@@ -98,8 +98,7 @@ reproductive_age_cleaned <- reproductive_age_cleaned %>%
 count(reproductive_age_cleaned, ideal_children_society_english) # 1
 
 # We are still getting it that means it is not an empty string but something else 
-# A string with only whitespace (like " " or "\t")
-# An invisible non-breaking space (\u00A0) or other special character
+# Maybe s string with only whitespace
 
 library(dplyr)
 library(stringr)
