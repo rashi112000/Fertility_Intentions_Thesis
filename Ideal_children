@@ -1,3 +1,36 @@
+# --------------------------------
+# LOADING REQUIRED LIBRARIES 
+# --------------------------------
+library(dplyr)     # Data wrangling
+library(gt)        # Elegant table creation
+library(stringr)   # String manipulation
+library(tidyr)     # Data reshaping
+
+# --------------------------------
+# LOADING DATA
+# --------------------------------
+
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# --------------------------------
+# COMBINING DATA of t0 and t1 
+# --------------------------------
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# --------------------------------
+# CALCULATING AGE 
+# --------------------------------
+data2$age <- 2025 - data2$numeric_birth_year
+
+# --------------------------------
+# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# --------------------------------
+reproductive_age_2 <- data2 %>%
+    filter(!is.na(age), age >= 18, age <= 50)
+
+
 install.packages("writexl")
 
 # Categorising Ideal number of children according to society and personally 
