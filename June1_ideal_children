@@ -247,3 +247,62 @@ reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "idea
 table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
+
+
+# RE-CHECKING VALUES USING FILTER  
+
+# SEEING WHICH VALUES ARE INTO CATEGORY OF: 0-1
+
+# FOR PERSONALLY
+reproductive_age_cleaned %>%
+  filter(ideal_children_personally3 == "0-1") %>%
+  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
+
+# FOR SOCIETY
+
+reproductive_age_cleaned %>%
+  filter(ideal_children_society3 == "0-1") %>%
+  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
+
+# SEEING WHICH VALUES ARE INTO CATEGORY OF: 2
+
+# FOR PERSONALLY
+reproductive_age_cleaned %>%
+  filter(ideal_children_personally3 == "2") %>%
+  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
+
+# FOR SOCIETY
+
+reproductive_age_cleaned %>%
+  filter(ideal_children_society3 == "2") %>%
+  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
+
+
+# SEEING WHICH VALUES ARE INTO CATEGORY OF: 3 or more
+
+# FOR PERSONALLY
+reproductive_age_cleaned %>%
+  filter(ideal_children_personally3 == "3 or more") %>%
+  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
+
+# FOR SOCIETY
+
+reproductive_age_cleaned %>%
+  filter(ideal_children_society3 == "3 or more") %>%
+  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
+
+# SEEING WHICH VALUES ARE INTO CATEGORY OF: THERE IS NO IDEAL NUMBER 
+
+# FOR PERSONALLY
+
+reproductive_age_cleaned %>%
+  filter(ideal_children_personally3 == "There is no ideal number / unclear") %>%
+  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
+
+# FOR SOCIETY 
+
+reproductive_age_cleaned %>%
+  filter(ideal_children_society3 == "There is no ideal number / unclear") %>%
+  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
+
+
