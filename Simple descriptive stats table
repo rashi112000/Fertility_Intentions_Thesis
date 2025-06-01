@@ -186,6 +186,8 @@ summary_gt <- final_simple_table %>%
     row_group.border.bottom.color = "gray80"
   )
 
+print(summary_gt)
+
 # --------------------------------
 # SAVE FINAL TABLE AS .DOCX AND .HTML
 # --------------------------------
