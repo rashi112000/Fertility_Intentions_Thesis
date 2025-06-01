@@ -106,116 +106,11 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
         concern_category == "EXTREMELY CONCERNED" ~ "High concern",
         TRUE ~ NA_character_
     ))
-# --------------------------------
-# LOADING REQUIRED LIBRARIES 
-# --------------------------------
-library(dplyr)     # Data wrangling
-library(gt)        # Elegant table creation
-library(stringr)   # String manipulation
-library(tidyr)     # Data reshaping
 
-# --------------------------------
-# LOADING DATA
-# --------------------------------
 
-data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
-
-# --------------------------------
-# COMBINING DATA of t0 and t1 
-# --------------------------------
-data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
-data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
-data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
-
-# --------------------------------
-# CALCULATING AGE 
-# --------------------------------
-data2$age <- 2025 - data2$numeric_birth_year
-
-# --------------------------------
-# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
-# --------------------------------
-reproductive_age_2 <- data2 %>%
-    filter(!is.na(age), age >= 18, age <= 50)
-
-# --------------------------------
-# STANDARDIZING CLIMATE CONCERN AND CREATING DIFFERENT CATEGORIES
-# --------------------------------
-# Convert concern text to lowercase
-reproductive_age_2 <- reproductive_age_2 %>%
-    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
-    mutate(concern_category = case_when(
-        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
-        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
-        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
-        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
-        TRUE ~ NA_character_
-    ))
-
-# --------------------------------
-# CLEANING & RECODING DEMOGRAPHIC VARIABLES
-# --------------------------------
-reproductive_age_cleaned <- reproductive_age_2 %>%
-    # Keeping binary sex values
-    filter(sex %in% c("Male", "Female")) %>%
-    
-    # Categorizing number of children
-    mutate(present_children = case_when(
-        numeric_number_children == 0 ~ "0",
-        numeric_number_children == 1 ~ "1",
-        numeric_number_children == 2 ~ "2",
-        numeric_number_children >= 3 ~ "3 or more",
-        TRUE ~ NA_character_
-    )) %>%
-    filter(!is.na(present_children)) %>%
-    
-    # Simplifying education levels
-    mutate(educational_qualification = case_when(
-        education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
-        education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
-        education == "No educational qualification" ~ "No education",
-        TRUE ~ NA_character_
-    )) %>%
-    
-    # Recoding employment status
-    mutate(employment_current = case_when(
-        employment_status == "Worker" ~ "Working",
-        employment_status == "Student" ~ "Student",
-        employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
-        TRUE ~ NA_character_
-    )) %>%
-    
-    # Simplifying marital status 
-    mutate(marital_status_current = case_when(
-        marital_status == "Married" ~ "Married",
-        marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
-        TRUE ~ NA_character_
-    )) %>%
-    
-    # Grouping income brackets
-    mutate(income_monthly = case_when(
-        net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
-        net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
-        net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
-        TRUE ~ NA_character_
-    )) %>%
-    filter(!is.na(income_monthly)) %>%
-    
-    # Creating age groups
-    mutate(age_bracket = cut(age,
-                             breaks = c(17, 24, 29, 34, 39, 44, 50),
-                             labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
-                             right = TRUE)) %>%
-    
-    # Creating a 3-level climate concern variable
-    mutate(climate_concern = case_when(
-        concern_category == "UNCONCERNED" ~ "Low concern",
-        concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
-        concern_category == "EXTREMELY CONCERNED" ~ "High concern",
-        TRUE ~ NA_character_
-    ))
-
-# AUTOMATING THE WHOLE PROCESS
+# ----------------------------------------
+# FUNCTION TO CATEGORIZE IDEAL NUMBER OF CHILDREN
+# ----------------------------------------
 
 # Function to clean and categorize ideal children variables
 clean_ideal_children <- function(df, var_name) {
@@ -243,7 +138,7 @@ clean_ideal_children <- function(df, var_name) {
     return(df)
 }
 
-# Using 'reproductive_age_cleaned' as it is already your data frame
+# Apply to both personal and societal ideal children variables
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
 
@@ -252,11 +147,17 @@ table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
 
-#RE-CHECKING VALUES USING VIEW 
+# ----------------------------------------
+# VIEW ALL ENTRIES BY CATEGORY
+# ----------------------------------------
 
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 0-1
+# ----------------------------------------
+# VIEW CATEGORY OF: 0-1
+# ----------------------------------------
 
+# ----------------------------------------
 # FOR PERSONALLY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -264,7 +165,9 @@ View(
     select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
 )
 
+# ----------------------------------------
 # FOR SOCIETY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -272,9 +175,13 @@ View(
     select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
 )
 
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 2
+# ----------------------------------------
+# VIEW CATEGORY OF: 2
+# ----------------------------------------
 
+# ----------------------------------------
 # FOR PERSONALLY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -282,7 +189,9 @@ View(
     select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
 )
 
+# ----------------------------------------
 # FOR SOCIETY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -290,9 +199,13 @@ View(
     select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
 )
 
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 3 or more
+# ----------------------------------------
+# VIEW CATEGORY OF: 3 or more
+# ----------------------------------------
 
+# ----------------------------------------
 # FOR PERSONALLY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -300,7 +213,9 @@ View(
     select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
 )
 
+# ----------------------------------------
 # FOR SOCIETY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -308,9 +223,13 @@ View(
     select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
 )
 
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: THERE IS NO IDEAL NUMBER 
+# ----------------------------------------
+# VIEW CATEGORY OF: There is no ideal number / unclear
+# ----------------------------------------
 
+# ----------------------------------------
 # FOR PERSONALLY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -318,7 +237,9 @@ View(
     select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
 )
 
+# ----------------------------------------
 # FOR SOCIETY
+# ----------------------------------------
 
 View(
   reproductive_age_cleaned %>%
@@ -327,74 +248,21 @@ View(
 )
 
 
+# ----------------------------------------
+# VIEW ALL CATEGORIES
+# ----------------------------------------
 
-
-# RE-CHECKING VALUES USING FILTER  
-
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 0-1
-
+# ----------------------------------------
 # FOR PERSONALLY
-reproductive_age_cleaned %>%
-  filter(ideal_children_personally3 == "0-1") %>%
-  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
-
-# FOR SOCIETY
-
-reproductive_age_cleaned %>%
-  filter(ideal_children_society3 == "0-1") %>%
-  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
-
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 2
-
-# FOR PERSONALLY
-reproductive_age_cleaned %>%
-  filter(ideal_children_personally3 == "2") %>%
-  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
-
-# FOR SOCIETY
-
-reproductive_age_cleaned %>%
-  filter(ideal_children_society3 == "2") %>%
-  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
-
-
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: 3 or more
-
-# FOR PERSONALLY
-reproductive_age_cleaned %>%
-  filter(ideal_children_personally3 == "3 or more") %>%
-  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
-
-# FOR SOCIETY
-
-reproductive_age_cleaned %>%
-  filter(ideal_children_society3 == "3 or more") %>%
-  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
-
-# SEEING WHICH VALUES ARE INTO CATEGORY OF: THERE IS NO IDEAL NUMBER 
-
-# FOR PERSONALLY
-
-reproductive_age_cleaned %>%
-  filter(ideal_children_personally3 == "There is no ideal number / unclear") %>%
-  select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3)
-
-# FOR SOCIETY 
-
-reproductive_age_cleaned %>%
-  filter(ideal_children_society3 == "There is no ideal number / unclear") %>%
-  select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3)
-
-
-# FOR ALL CATEGORIES
-
-# FOR PERSONALLY
+# ----------------------------------------
 
 View(reproductive_age_cleaned %>%
   select(original_ideal_children_personally2, ideal_children_personally2, ideal_children_personally3) %>%
   arrange(ideal_children_personally3))
 
+# ----------------------------------------
 # FOR SOCIETY
+# ----------------------------------------
 View(reproductive_age_cleaned %>%
   select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3) %>%
   arrange(ideal_children_society3))
