@@ -203,3 +203,10 @@ reproductive_age_cleaned$ideal_children_society3 <- case_when(
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
 count(reproductive_age_cleaned, ideal_children_society3)
+
+# Ideal_children_society3    n
+# 1                                0-1  327
+# 2                                  2 1155
+# 3                          3 or more  378
+# 4 There is no ideal number / unclear   45
+
