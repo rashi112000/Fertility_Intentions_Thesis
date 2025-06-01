@@ -210,3 +210,40 @@ count(reproductive_age_cleaned, ideal_children_society3)
 # 3                          3 or more  378
 # 4 There is no ideal number / unclear   45
 
+
+# AUTOMATING THE WHOLE PROCESS
+
+# Function to clean and categorize ideal children variables
+clean_ideal_children <- function(df, var_name) {
+  original_var <- var_name
+  original_var_orig <- paste0("original_", var_name)
+  new_cat_var <- sub("2$", "3", var_name)
+  
+  # Save original column
+  df[[original_var_orig]] <- df[[original_var]]
+  
+  # Replace empty strings or whitespace with NA
+  df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+  
+  # Convert to numeric safely
+  num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+  
+  # Categorize responses
+  df[[new_cat_var]] <- ifelse(
+    !is.na(num_vals) & num_vals <= 1, "0-1",
+    ifelse(!is.na(num_vals) & num_vals > 1 & num_vals <= 2, "2",
+    ifelse(!is.na(num_vals) & num_vals > 2, "3 or more",
+           "There is no ideal number / unclear"))
+  )
+  
+  return(df)
+}
+
+# Assuming 'reproductive_age_cleaned' is already your data frame
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+# Check tables for confirmation
+table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
+table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
