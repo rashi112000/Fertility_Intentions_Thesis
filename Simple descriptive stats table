@@ -168,7 +168,7 @@ summary_gt <- final_simple_table %>%
   ) %>%
   cols_label(
     Category = "Category",
-    Percent = "Percent Frequency"
+    Percent = "Percentage"
   ) %>%
   sub_missing(missing_text = "") %>%
   tab_options(
