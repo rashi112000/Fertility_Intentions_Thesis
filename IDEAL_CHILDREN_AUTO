@@ -271,5 +271,30 @@ count(reproductive_age_cleaned, ideal_children_society3)
 count(reproductive_age_cleaned, ideal_children_personally3)
 
 
+# IF YOU WANT TO SHOW HEATMAP OF IDEAL CHILDREN PERSONALLY VS SOCIETY 
+
+# Create a cross-tabulation of the two variables
+heatmap_data <- reproductive_age_cleaned %>%
+    count(ideal_children_personally3, ideal_children_society3) %>%
+    drop_na()
+
+View(heatmap_data)
+
+ggplot(heatmap_data, aes(x = ideal_children_personally3, y = ideal_children_society3, fill = n)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient(low = "#DCE775", high = "#33691E") +
+    labs(
+        title = "Heat Map of Ideal Number of Children: Personal vs. Society",
+        x = "Ideal Number of Children (Personally)",
+        y = "Ideal Number of Children (Society)",
+        fill = "Count"
+    ) +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5)
+    )
+
+
 
 
