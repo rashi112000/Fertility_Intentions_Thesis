@@ -267,5 +267,9 @@ View(reproductive_age_cleaned %>%
   select(original_ideal_children_society2, ideal_children_society2, ideal_children_society3) %>%
   arrange(ideal_children_society3))
 
+count(reproductive_age_cleaned, ideal_children_society3)
+count(reproductive_age_cleaned, ideal_children_personally3)
+
+
 
 
