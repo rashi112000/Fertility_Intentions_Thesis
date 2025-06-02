@@ -146,6 +146,27 @@ reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "idea
 table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
+# ----------------------------------------
+OUTPUT FOR IDEAL_CHILDREN_PERSONALLY3
+# ----------------------------------------
+
+# Categories                           n
+# 0-1                                 640
+# 2                                   869
+# 3 or more                           359
+# There is no ideal number / unclear  37
+
+# ----------------------------------------
+OUTPUT FOR IDEAL_CHILDREN_SOCIETY3
+# ----------------------------------------
+
+# Categories                           n
+# 0-1                                 327
+# 2                                   1115
+# 3 or more                           378
+# There is no ideal number / unclear  45
+
+
 
 # ----------------------------------------
 # VIEW ALL ENTRIES BY CATEGORY
