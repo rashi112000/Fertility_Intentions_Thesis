@@ -5,6 +5,7 @@ library(dplyr)     # Data wrangling
 library(gt)        # Elegant table creation
 library(stringr)   # String manipulation
 library(tidyr)     # Data reshaping
+library(ggplot2)
 
 # --------------------------------
 # LOADING DATA
@@ -147,7 +148,7 @@ table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
 # ----------------------------------------
-OUTPUT FOR IDEAL_CHILDREN_PERSONALLY3
+# OUTPUT FOR IDEAL_CHILDREN_PERSONALLY3
 # ----------------------------------------
 
 # Categories                           n
@@ -157,7 +158,7 @@ OUTPUT FOR IDEAL_CHILDREN_PERSONALLY3
 # There is no ideal number / unclear  37
 
 # ----------------------------------------
-OUTPUT FOR IDEAL_CHILDREN_SOCIETY3
+# OUTPUT FOR IDEAL_CHILDREN_SOCIETY3
 # ----------------------------------------
 
 # Categories                           n
