@@ -1,8 +1,155 @@
 # ORDINAL LOGISTIC REGRESSION MODEL 
 
+# --------------------------------
+# LOADING REQUIRED LIBRARIES 
+# --------------------------------
+library(dplyr)   
+library(stringr)
+library(tidyr)   
 library(MASS)         # for polr
 library(effects)      # for allEffects
-library(dplyr)        # for data manipulation
+
+
+# --------------------------------
+# LOADING DATA
+# --------------------------------
+
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# --------------------------------
+# COMBINING DATA of t0 and t1 
+# --------------------------------
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# --------------------------------
+# CALCULATING AGE 
+# --------------------------------
+data2$age <- 2025 - data2$numeric_birth_year
+
+# --------------------------------
+# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# --------------------------------
+reproductive_age_2 <- data2 %>%
+    filter(!is.na(age), age >= 18, age <= 50)
+
+# --------------------------------
+# STANDARDIZING CLIMATE CONCERN AND CREATING DIFFERENT CATEGORIES
+# --------------------------------
+# Convert concern text to lowercase
+reproductive_age_2 <- reproductive_age_2 %>%
+    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+    mutate(concern_category = case_when(
+        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+        TRUE ~ NA_character_
+    ))
+
+# --------------------------------
+# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# --------------------------------
+reproductive_age_cleaned <- reproductive_age_2 %>%
+    # Keeping binary sex values
+    filter(sex %in% c("Male", "Female")) %>%
+    
+    # Categorizing number of children
+    mutate(present_children = case_when(
+        numeric_number_children == 0 ~ "0",
+        numeric_number_children == 1 ~ "1",
+        numeric_number_children == 2 ~ "2",
+        numeric_number_children >= 3 ~ "3 or more",
+        TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(present_children)) %>%
+    
+    # Simplifying education levels
+    mutate(educational_qualification = case_when(
+        education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+        education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+        education == "No educational qualification" ~ "No education",
+        TRUE ~ NA_character_
+    )) %>%
+    
+    # Recoding employment status
+    mutate(employment_current = case_when(
+        employment_status == "Worker" ~ "Working",
+        employment_status == "Student" ~ "Student",
+        employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+        TRUE ~ NA_character_
+    )) %>%
+    
+    # Simplifying marital status 
+    mutate(marital_status_current = case_when(
+        marital_status == "Married" ~ "Married",
+        marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+        TRUE ~ NA_character_
+    )) %>%
+    
+    # Grouping income brackets
+    mutate(income_monthly = case_when(
+        net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+        net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+        net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+        TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(income_monthly)) %>%
+    
+    # Creating age groups
+    mutate(age_bracket = cut(age,
+                             breaks = c(17, 24, 29, 34, 39, 44, 50),
+                             labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                             right = TRUE)) %>%
+    
+    # Creating a 3-level climate concern variable
+    mutate(climate_concern = case_when(
+        concern_category == "UNCONCERNED" ~ "Low concern",
+        concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
+        concern_category == "EXTREMELY CONCERNED" ~ "High concern",
+        TRUE ~ NA_character_
+    ))
+
+
+# ----------------------------------------
+# FUNCTION TO CATEGORIZE IDEAL NUMBER OF CHILDREN
+# ----------------------------------------
+
+# Function to clean and categorize ideal children variables
+clean_ideal_children <- function(df, var_name) {
+    original_var <- var_name
+    original_var_orig <- paste0("original_", var_name)
+    new_cat_var <- sub("2$", "3", var_name)
+    
+    # Save original column
+    df[[original_var_orig]] <- df[[original_var]]
+    
+    # Replace empty strings or whitespace with NA
+    df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+    
+    # Convert to numeric safely
+    num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+    
+    # Categorize responses
+    df[[new_cat_var]] <- ifelse(
+        !is.na(num_vals) & num_vals <= 1, "0-1",
+        ifelse(!is.na(num_vals) & num_vals > 1 & num_vals <= 2, "2",
+               ifelse(!is.na(num_vals) & num_vals > 2, "3 or more",
+                      "There is no ideal number / unclear"))
+    )
+    
+    return(df)
+}
+
+# Apply to both personal and societal ideal children variables
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+# Check tables for confirmation
+table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
+table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
 
 # Preparing the data for regression
 
@@ -75,13 +222,6 @@ coef_table <- cbind(coef_table, "p value" = p_values)
 coef_table
 
 
-# Plotting
-# Load effects package
-library(effects)
-
-# Plot effect of climate concern on ideal children
-plot(allEffects(model), 'climate_concern')
-
 # Calculating predicted probabilities
 
 # Extract effect as a data frame
@@ -91,7 +231,7 @@ climate_df <- as.data.frame(climate_effect)
 # Check the structure
 str(climate_df)
 
-# Subset and rename manually (more robust than select())
+# Subset and rename manually 
 predicted_probs <- climate_df[, c("climate_concern", "prob.X0.1", "prob.X2", "prob.X3.or.more")]
 names(predicted_probs) <- c("Climate Concern", "Pr(0–1 children)", "Pr(2 children)", "Pr(3 or more children)")
 
@@ -101,4 +241,9 @@ predicted_probs[, 2:4] <- round(predicted_probs[, 2:4], 2)
 # View table
 print(predicted_probs)
 
+# Plotting
+# Load effects package
+#library(effects)
 
+# Plot effect of climate concern on ideal children
+# plot(allEffects(model), 'climate_concern')
