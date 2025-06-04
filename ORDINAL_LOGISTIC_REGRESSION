@@ -101,15 +101,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     mutate(age_bracket = cut(age,
                              breaks = c(17, 24, 29, 34, 39, 44, 50),
                              labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
-                             right = TRUE)) %>%
-    
-    # Creating a 3-level climate concern variable
-    mutate(climate_concern = case_when(
-        concern_category == "UNCONCERNED" ~ "Low concern",
-        concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
-        concern_category == "EXTREMELY CONCERNED" ~ "High concern",
-        TRUE ~ NA_character_
-    ))
+                             right = TRUE)) 
 
 
 # ----------------------------------------
