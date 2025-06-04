@@ -134,6 +134,16 @@ clean_ideal_children <- function(df, var_name) {
     return(df)
 }
 
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+    mutate(concern_category = case_when(
+        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+        TRUE ~ NA_character_
+    ))
+
 # Apply to both personal and societal ideal children variables
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
@@ -183,6 +193,12 @@ reproductive_age_cleaned$climate_concern <- ordered(
   reproductive_age_cleaned$climate_concern,
   levels = c("Low concern", "Medium concern", "High concern")
 )
+
+reproductive_age_cleaned$concern_category <- ordered(
+    reproductive_age_cleaned$concern_category,
+    levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")
+)
+
 
 # For ideal children personally, using only numerical categories 
 reproductive_age_cleaned <- reproductive_age_cleaned %>%
