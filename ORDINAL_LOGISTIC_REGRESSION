@@ -1,0 +1,104 @@
+# ORDINAL LOGISTIC REGRESSION MODEL 
+
+library(MASS)         # for polr
+library(effects)      # for allEffects
+library(dplyr)        # for data manipulation
+
+# Preparing the data for regression
+
+# Ensuring it is a factor 
+reproductive_age_cleaned$sex <- factor(reproductive_age_cleaned$sex)
+
+# Ordered factor
+reproductive_age_cleaned$present_children <- ordered(
+  reproductive_age_cleaned$present_children,
+  levels = c("0", "1", "2", "3 or more")
+)
+
+# Ordered factor
+reproductive_age_cleaned$educational_qualification <- ordered(
+  reproductive_age_cleaned$educational_qualification,
+  levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")
+)
+
+# Unordered factor
+reproductive_age_cleaned$employment_current <- factor(reproductive_age_cleaned$employment_current)
+
+# Factor
+reproductive_age_cleaned$marital_status_current <- factor(reproductive_age_cleaned$marital_status_current)
+
+# Ordered factor
+reproductive_age_cleaned$income_monthly <- ordered(
+  reproductive_age_cleaned$income_monthly,
+  levels = c("Low income", "Middle income", "High income")
+)
+
+# ordinal it is but confirm it is ordered
+reproductive_age_cleaned$age_bracket <- ordered(
+  reproductive_age_cleaned$age_bracket,
+  levels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50")
+)
+
+# Ordered
+reproductive_age_cleaned$climate_concern <- ordered(
+  reproductive_age_cleaned$climate_concern,
+  levels = c("Low concern", "Medium concern", "High concern")
+)
+
+# For ideal children personally, using only numerical categories 
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  filter(ideal_children_personally3 %in% c("0-1", "2", "3 or more"))
+
+# Then make sure it's an ordered factor:
+reproductive_age_cleaned$ideal_children_personally3 <- ordered(
+  reproductive_age_cleaned$ideal_children_personally3,
+  levels = c("0-1", "2", "3 or more")
+)
+
+# Load required package
+library(MASS)
+
+# Fit the ordinal logistic regression model with recoded variables
+model <- polr(
+  ideal_children_personally3 ~ climate_concern + sex + age_bracket + present_children + 
+    educational_qualification + employment_current + marital_status_current + income_monthly,
+  data = reproductive_age_cleaned,
+  Hess = TRUE
+)
+
+summary(model)
+
+
+coef_table <- coef(summary(model))
+p_values <- pnorm(abs(coef_table[, "t value"]), lower.tail = FALSE) * 2
+coef_table <- cbind(coef_table, "p value" = p_values)
+coef_table
+
+
+# Plotting
+# Load effects package
+library(effects)
+
+# Plot effect of climate concern on ideal children
+plot(allEffects(model), 'climate_concern')
+
+# Calculating predicted probabilities
+
+# Extract effect as a data frame
+climate_effect <- allEffects(model)$climate_concern
+climate_df <- as.data.frame(climate_effect)
+
+# Check the structure
+str(climate_df)
+
+# Subset and rename manually (more robust than select())
+predicted_probs <- climate_df[, c("climate_concern", "prob.X0.1", "prob.X2", "prob.X3.or.more")]
+names(predicted_probs) <- c("Climate Concern", "Pr(0–1 children)", "Pr(2 children)", "Pr(3 or more children)")
+
+# Round probabilities
+predicted_probs[, 2:4] <- round(predicted_probs[, 2:4], 2)
+
+# View table
+print(predicted_probs)
+
+
