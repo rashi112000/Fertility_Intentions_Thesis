@@ -35,20 +35,6 @@ reproductive_age_2 <- data2 %>%
     filter(!is.na(age), age >= 18, age <= 50)
 
 # --------------------------------
-# STANDARDIZING CLIMATE CONCERN AND CREATING DIFFERENT CATEGORIES
-# --------------------------------
-# Convert concern text to lowercase
-reproductive_age_2 <- reproductive_age_2 %>%
-    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
-    mutate(concern_category = case_when(
-        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
-        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
-        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
-        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
-        TRUE ~ NA_character_
-    ))
-
-# --------------------------------
 # CLEANING & RECODING DEMOGRAPHIC VARIABLES
 # --------------------------------
 reproductive_age_cleaned <- reproductive_age_2 %>%
@@ -134,15 +120,6 @@ clean_ideal_children <- function(df, var_name) {
     return(df)
 }
 
-reproductive_age_cleaned <- reproductive_age_cleaned %>%
-    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
-    mutate(concern_category = case_when(
-        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
-        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
-        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
-        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
-        TRUE ~ NA_character_
-    ))
 
 # Apply to both personal and societal ideal children variables
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
