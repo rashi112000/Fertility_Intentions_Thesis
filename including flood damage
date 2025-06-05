@@ -147,6 +147,201 @@ model_society <- lm(ideal_children_society_num ~ concern_category + sex + educat
 
 summary(model_society)
 
+# ----------------------------------------
+# REGRESSION with table (including floodedcomune + climate concern )
+# ----------------------------------------
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(broom)
+library(gt)
+
+# Prepare clean_data
+clean_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", NA, "Unclear"),
+    !ideal_children_society3 %in% c("6 or more", NA, "Unclear")
+  ) %>%
+  mutate(
+    ideal_children_personally_num = as.numeric(as.character(ideal_children_personally3)),
+    ideal_children_society_num = as.numeric(as.character(ideal_children_society3)),
+    
+    # Create flood_impact from floodedcomune
+    flood_impact = case_when(
+      floodedcomune == 1 ~ "Flooded",
+      floodedcomune == 0 ~ "Not flooded",
+      TRUE ~ NA_character_
+    ),
+    flood_impact = factor(flood_impact)
+  )
+
+# OLS Model 1: Personally ideal children
+model_personally <- lm(
+  ideal_children_personally_num ~ concern_category + sex + present_children + educational_qualification +
+    employment_current + marital_status_current + income_monthly + age_bracket + flood_impact,
+  data = clean_data
+)
+
+# OLS Model 2: Society ideal children
+model_society <- lm(
+  ideal_children_society_num ~ concern_category + sex + present_children + educational_qualification +
+    employment_current + marital_status_current + income_monthly + age_bracket + flood_impact,
+  data = clean_data
+)
+
+# Function to format p-values
+format_pval <- function(p) {
+  if (is.na(p)) return(NA)
+  if (p < 0.001) return("<0.001")
+  sprintf("%.3f", p)
+}
+
+# Tidy model results
+tidy_personally <- broom::tidy(model_personally) %>%
+  mutate(model = "Personally")
+
+tidy_society <- broom::tidy(model_society) %>%
+  mutate(model = "Society")
+
+# Combine and format for table
+combined_tidy <- bind_rows(tidy_personally, tidy_society)
+
+combined_wide <- combined_tidy %>%
+  select(model, term, estimate, std.error, statistic, p.value) %>%
+  pivot_wider(
+    names_from = model,
+    values_from = c(estimate, std.error, statistic, p.value),
+    names_glue = "{model}_{.value}"
+  ) %>%
+  mutate(
+    Personally_p.value = sapply(Personally_p.value, format_pval),
+    Society_p.value = sapply(Society_p.value, format_pval)
+  )
+
+# Display table using gt
+p_value_table <- combined_wide %>%
+  gt(rowname_col = "term") %>%
+  tab_spanner(
+    label = "Personally Ideal Children",
+    columns = starts_with("Personally")
+  ) %>%
+  tab_spanner(
+    label = "Society Ideal Children",
+    columns = starts_with("Society")
+  ) %>%
+  cols_label(
+    Personally_estimate = "Estimate",
+    Personally_std.error = "Std. Error",
+    Personally_statistic = "t value",
+    Personally_p.value = "p value",
+    Society_estimate = "Estimate",
+    Society_std.error = "Std. Error",
+    Society_statistic = "t value",
+    Society_p.value = "p value"
+  ) %>%
+  tab_options(table.font.size = px(12))
+
+
 #Saving
 gtsave(p_value, "ideal_children_table.html")
+
+
+
+
+# model for flood_impact without climate concern 
+
+# ----------------------------------------
+# REGRESSION with table (Flood Impact First)
+# ----------------------------------------
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(broom)
+library(gt)
+
+# Prepare regression data
+regression_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", NA, "Unclear"),
+    !ideal_children_society3 %in% c("6 or more", NA, "Unclear")
+  ) %>%
+  mutate(
+    ideal_children_personally_num = as.numeric(as.character(ideal_children_personally3)),
+    ideal_children_society_num = as.numeric(as.character(ideal_children_society3)),
+    
+    # Create flood_impact factor from floodedcomune
+    flood_impact = case_when(
+      floodedcomune == 1 ~ "Flooded",
+      floodedcomune == 0 ~ "Not flooded",
+      TRUE ~ NA_character_
+    ),
+    flood_impact = factor(flood_impact)
+  )
+
+# Run OLS regression: Personally ideal children
+model_personally <- lm(
+  ideal_children_personally_num ~ flood_impact + sex + educational_qualification + employment_current +
+    marital_status_current + income_monthly + age_bracket + present_children,
+  data = regression_data
+)
+
+# Run OLS regression: Society ideal children
+model_society <- lm(
+  ideal_children_society_num ~ flood_impact + sex + educational_qualification + employment_current +
+    marital_status_current + income_monthly + age_bracket + present_children,
+  data = regression_data
+)
+
+# Format p-values
+format_pval <- function(p) {
+  if (is.na(p)) return(NA)
+  if (p < 0.001) return("<0.001")
+  sprintf("%.3f", p)
+}
+
+# Tidy results
+tidy_personally <- tidy(model_personally) %>%
+  mutate(model = "Personally")
+
+tidy_society <- tidy(model_society) %>%
+  mutate(model = "Society")
+
+# Combine and reshape for table display
+combined_wide <- bind_rows(tidy_personally, tidy_society) %>%
+  select(model, term, estimate, std.error, statistic, p.value) %>%
+  pivot_wider(
+    names_from = model,
+    values_from = c(estimate, std.error, statistic, p.value),
+    names_glue = "{model}_{.value}"
+  ) %>%
+  mutate(
+    Personally_p.value = sapply(Personally_p.value, format_pval),
+    Society_p.value = sapply(Society_p.value, format_pval)
+  )
+
+# Create table using gt
+p_value_table <- combined_wide %>%
+  gt(rowname_col = "term") %>%
+  tab_spanner(
+    label = "Personally Ideal Children",
+    columns = starts_with("Personally")
+  ) %>%
+  tab_spanner(
+    label = "Society Ideal Children",
+    columns = starts_with("Society")
+  ) %>%
+  cols_label(
+    Personally_estimate = "Estimate",
+    Personally_std.error = "Std. Error",
+    Personally_statistic = "t value",
+    Personally_p.value = "p value",
+    Society_estimate = "Estimate",
+    Society_std.error = "Std. Error",
+    Society_statistic = "t value",
+    Society_p.value = "p value"
+  ) %>%
+  tab_options(table.font.size = px(12))
+
 
