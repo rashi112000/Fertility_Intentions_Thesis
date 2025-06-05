@@ -149,3 +149,138 @@ reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "idea
 
 table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
+
+# ----------------------------------------
+# REGRESSION
+# ----------------------------------------
+
+# Filter out rows with "6 or more", "Unclear", or NA in the ideal children variables
+regression_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", "Unclear", NA),
+    !ideal_children_society3 %in% c("6 or more", "Unclear", NA),
+    !is.na(concern_category),
+    concern_category != "Unclear"
+  ) %>%
+  # Convert ideal children variables to numeric now that those values are excluded
+  mutate(
+    ideal_children_personally_num = as.numeric(ideal_children_personally3),
+    ideal_children_society_num = as.numeric(ideal_children_society3),
+    concern_category = factor(concern_category, levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
+    sex = factor(sex),
+    educational_qualification = factor(educational_qualification),
+    employment_current = factor(employment_current),
+    marital_status_current = factor(marital_status_current),
+    income_monthly = factor(income_monthly),
+    age_bracket = factor(age_bracket),
+    present_children = factor(present_children)
+  )
+
+# Run OLS regressions
+model_personally <- lm(ideal_children_personally_num ~ concern_category + sex + educational_qualification + employment_current +
+                         marital_status_current + income_monthly + age_bracket + present_children,
+                       data = regression_data)
+
+summary(model_personally)
+
+model_society <- lm(ideal_children_society_num ~ concern_category + sex + educational_qualification + employment_current +
+                      marital_status_current + income_monthly + age_bracket + present_children,
+                    data = regression_data)
+
+summary(model_society)
+
+# ----------------------------------------
+# REGRESSION with table 
+# ----------------------------------------
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(broom)
+library(gt)
+
+# Assuming reproductive_age_cleaned is already prepared and filtered
+
+# Exclude "6 or more", NA, and "Unclear" from ideal children variables
+clean_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", NA, "Unclear"),
+    !ideal_children_society3 %in% c("6 or more", NA, "Unclear")
+  )
+
+# Convert ideal children vars to numeric for regression
+clean_data <- clean_data %>%
+  mutate(
+    ideal_children_personally_num = as.numeric(as.character(ideal_children_personally3)),
+    ideal_children_society_num = as.numeric(as.character(ideal_children_society3))
+  )
+
+# OLS Model 1: Influence of climate concern on ideal children personally
+model_personally <- lm(
+  ideal_children_personally_num ~ concern_category + sex + present_children + educational_qualification +
+    employment_current + marital_status_current + income_monthly + age_bracket,
+  data = clean_data
+)
+
+# OLS Model 2: Influence of climate concern on ideal children society
+model_society <- lm(
+  ideal_children_society_num ~ concern_category + sex + present_children + educational_qualification +
+    employment_current + marital_status_current + income_monthly + age_bracket,
+  data = clean_data
+)
+
+# Function to format p-values from scientific notation to decimal
+format_pval <- function(p) {
+  if (is.na(p)) return(NA)
+  if (p < 0.001) return("<0.001")
+  sprintf("%.3f", p)
+}
+
+# Tidy both model summaries
+tidy_personally <- broom::tidy(model_personally) %>%
+  mutate(model = "Personally")
+
+tidy_society <- broom::tidy(model_society) %>%
+  mutate(model = "Society")
+
+# Combine tidied results
+combined_tidy <- bind_rows(tidy_personally, tidy_society)
+
+# Pivot wider to get columns side-by-side
+combined_wide <- combined_tidy %>%
+  select(model, term, estimate, std.error, statistic, p.value) %>%
+  pivot_wider(
+    names_from = model,
+    values_from = c(estimate, std.error, statistic, p.value),
+    names_glue = "{model}_{.value}"
+  ) %>%
+  mutate(
+    Personally_p.value = sapply(Personally_p.value, format_pval),
+    Society_p.value = sapply(Society_p.value, format_pval)
+  )
+
+# Display table with gt
+combined_wide %>%
+  gt(rowname_col = "term") %>%
+  tab_spanner(
+    label = "Personally Ideal Children",
+    columns = starts_with("Personally")
+  ) %>%
+  tab_spanner(
+    label = "Society Ideal Children",
+    columns = starts_with("Society")
+  ) %>%
+  cols_label(
+    Personally_estimate = "Estimate",
+    Personally_std.error = "Std. Error",
+    Personally_statistic = "t value",
+    Personally_p.value = "p value",
+    Society_estimate = "Estimate",
+    Society_std.error = "Std. Error",
+    Society_statistic = "t value",
+    Society_p.value = "p value"
+  ) %>%
+  tab_options(table.font.size = px(12))
+
+
