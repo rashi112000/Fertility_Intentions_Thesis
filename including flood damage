@@ -108,5 +108,45 @@ mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
     TRUE ~ NA_character_
   ))
 
-  
+# REGRESSION 
+regression_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", "Unclear", NA),
+    !ideal_children_society3 %in% c("6 or more", "Unclear", NA),
+    !is.na(concern_category),
+    concern_category != "Unclear"
+  ) %>%
+  mutate(
+    flood_impact = case_when(
+      floodedcomune == 1 ~ "Flooded",
+      floodedcomune == 0 ~ "Not flooded",
+      TRUE ~ NA_character_
+    ),
+    ideal_children_personally_num = as.numeric(ideal_children_personally3),
+    ideal_children_society_num = as.numeric(ideal_children_society3),
+    concern_category = factor(concern_category, levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
+    sex = factor(sex),
+    educational_qualification = factor(educational_qualification),
+    employment_current = factor(employment_current),
+    marital_status_current = factor(marital_status_current),
+    income_monthly = factor(income_monthly),
+    age_bracket = factor(age_bracket),
+    present_children = factor(present_children),
+    flood_impact = factor(flood_impact)
+  )
+
+model_personally <- lm(ideal_children_personally_num ~ concern_category + sex + educational_qualification + employment_current +
+                         marital_status_current + income_monthly + age_bracket + present_children + flood_impact,
+                       data = regression_data)
+
+summary(model_personally)
+
+model_society <- lm(ideal_children_society_num ~ concern_category + sex + educational_qualification + employment_current +
+                      marital_status_current + income_monthly + age_bracket + present_children + flood_impact,
+                    data = regression_data)
+
+summary(model_society)
+
+#Saving
+gtsave(p_value, "ideal_children_table.html")
 
