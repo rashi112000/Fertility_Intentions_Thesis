@@ -1,0 +1,137 @@
+# --------------------------------
+# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# --------------------------------
+reproductive_age_cleaned <- reproductive_age_2 %>%
+  # Keeping binary sex values
+  filter(sex %in% c("Male", "Female")) %>%
+
+  # Categorizing number of children
+  mutate(present_children = case_when(
+    numeric_number_children == 0 ~ "0",
+    numeric_number_children == 1 ~ "1",
+    numeric_number_children == 2 ~ "2",
+    numeric_number_children == 3 ~ "3",
+    numeric_number_children == 4 ~ "4",
+    numeric_number_children == 5 ~ "5",
+    numeric_number_children == 6 ~ "6",
+    numeric_number_children == 7 ~ "7",
+    numeric_number_children == 8 ~ "8",
+    numeric_number_children == 9 ~ "9",
+    numeric_number_children == 10 ~ "10",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(present_children)) %>%
+
+  # Simplifying education levels
+  mutate(educational_qualification = case_when(
+    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+    education == "No educational qualification" ~ "No education",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Recoding employment status
+  mutate(employment_current = case_when(
+    employment_status == "Worker" ~ "Working",
+    employment_status == "Student" ~ "Student",
+    employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Simplifying marital status 
+  mutate(marital_status_current = case_when(
+    marital_status == "Married" ~ "Married",
+    marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Grouping income brackets
+  mutate(income_monthly = case_when(
+    net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+    net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+    net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(income_monthly)) %>%
+
+  # Creating age groups
+  mutate(age_bracket = cut(age,
+                           breaks = c(17, 24, 29, 34, 39, 44, 50),
+                           labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                           right = TRUE)) %>%
+
+  # Convert concern text to lowercase and recode
+  mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+  mutate(concern_category = case_when(
+    str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+    str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+    str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+    str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+    TRUE ~ NA_character_
+  ))
+
+clean_ideal_children <- function(df, var_name) {
+  original_var <- var_name
+  original_var_orig <- paste0("original_", var_name)
+  new_cat_var <- sub("2$", "3", var_name)
+  
+  # Save original column
+  df[[original_var_orig]] <- df[[original_var]]
+  
+  # Replace empty strings or whitespace with NA
+  df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+  
+  # Convert to numeric safely
+  num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+  
+  # Categorize values from 0 to 10
+  df[[new_cat_var]] <- case_when(
+    !is.na(num_vals) & num_vals == 0 ~ "0",
+    !is.na(num_vals) & num_vals == 1 ~ "1",
+    !is.na(num_vals) & num_vals == 2 ~ "2",
+    !is.na(num_vals) & num_vals == 3 ~ "3",
+    !is.na(num_vals) & num_vals == 4 ~ "4",
+    !is.na(num_vals) & num_vals == 5 ~ "5",
+    !is.na(num_vals) & num_vals == 6 ~ "6",
+    !is.na(num_vals) & num_vals == 7 ~ "7",
+    !is.na(num_vals) & num_vals == 8 ~ "8",
+    !is.na(num_vals) & num_vals == 9 ~ "9",
+    !is.na(num_vals) & num_vals == 10 ~ "10",
+    TRUE ~ "There is no ideal number / unclear"
+  )
+  
+  return(df)
+}
+# Apply to your variables
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
+table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
+#Ideal_children_personally3   n
+#1                                   0 262
+#2                                   1 378
+#3                                  10   1
+#4                                   2 864
+#5                                   3 295
+#6                                   4  36
+#7                                   5  12
+#8                                   6   1
+#9                                   7   3
+#10                                  8   1
+# 11 There is no ideal number / unclear  52
+
+
+#ideal_children_society3    n
+#1                                   0   71
+#2                                   1  256
+#3                                  10    1
+#4                                   2 1145
+#5                                   3  285
+#6                                   4   41
+#7                                   5   10
+#8                                   6    1
+#9                                   7    1
+#10                                  9    1
+#11 There is no ideal number / unclear   93
