@@ -261,7 +261,7 @@ combined_wide <- combined_tidy %>%
   )
 
 # Display table with gt
-combined_wide %>%
+p_value <- combined_wide %>%
   gt(rowname_col = "term") %>%
   tab_spanner(
     label = "Personally Ideal Children",
@@ -282,5 +282,32 @@ combined_wide %>%
     Society_p.value = "p value"
   ) %>%
   tab_options(table.font.size = px(12))
+
+# saving it
+p_value <- combined_wide %>%
+    gt(rowname_col = "term") %>%
+    tab_spanner(
+        label = "Personally Ideal Children",
+        columns = starts_with("Personally")
+    ) %>%
+    tab_spanner(
+        label = "Society Ideal Children",
+        columns = starts_with("Society")
+    ) %>%
+    cols_label(
+        Personally_estimate = "Estimate",
+        Personally_std.error = "Std. Error",
+        Personally_statistic = "t value",
+        Personally_p.value = "p value",
+        Society_estimate = "Estimate",
+        Society_std.error = "Std. Error",
+        Society_statistic = "t value",
+        Society_p.value = "p value"
+    ) %>%
+    tab_options(table.font.size = px(12))
+
+# Save as HTML
+gtsave(p_value, "ideal_children_table.html")
+
 
 
