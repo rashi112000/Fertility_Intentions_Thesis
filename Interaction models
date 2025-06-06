@@ -215,3 +215,206 @@ summary_table <- combined_wide %>%
 
 # Display table
 summary_table
+
+
+
+
+# ----------------------------------------
+# INTERACTION MODELS: AGE_BRACKET & PRESENT CHILDREN
+# ----------------------------------------
+
+model_society_interact <- lm(
+    ideal_children_society_num ~ age_bracket * present_children + concern_category +  marital_status_current + concern_category +  income_monthly + flood_impact + 
+        educational_qualification + present_children + employment_current
+         ,
+    data = regression_data
+)
+
+model_personally_interact <- lm(
+    ideal_children_personally_num ~ age_bracket * present_children + concern_category + marital_status_current + concern_category +  income_monthly + flood_impact + 
+        educational_qualification + present_children + employment_current
+         ,
+    data = regression_data
+)
+
+# Function to format p-values
+format_pval <- function(p) {
+    if (is.na(p)) return(NA)
+    if (p < 0.001) return("<0.001")
+    sprintf("%.3f", p)
+}
+
+# Tidy model results
+tidy_personally <- broom::tidy(model_personally_interact) %>%
+    mutate(model = "Personally")
+
+tidy_society <- broom::tidy(model_society_interact) %>%
+    mutate(model = "Society")
+
+# Combine and format for table
+combined_tidy <- bind_rows(tidy_personally, tidy_society)
+
+combined_wide <- combined_tidy %>%
+    select(model, term, estimate, std.error, statistic, p.value) %>%
+    pivot_wider(
+        names_from = model,
+        values_from = c(estimate, std.error, statistic, p.value),
+        names_glue = "{model}_{.value}"
+    ) %>%
+    mutate(
+        Personally_p.value = sapply(Personally_p.value, format_pval),
+        Society_p.value = sapply(Society_p.value, format_pval)
+    )
+
+# Display table using gt
+p_value_table1 <- combined_wide %>%
+    gt(rowname_col = "term") %>%
+    tab_spanner(
+        label = "Personally Ideal Children",
+        columns = starts_with("Personally")
+    ) %>%
+    tab_spanner(
+        label = "Society Ideal Children",
+        columns = starts_with("Society")
+    ) %>%
+    cols_label(
+        Personally_estimate = "Estimate",
+        Personally_std.error = "Std. Error",
+        Personally_statistic = "t value",
+        Personally_p.value = "p value",
+        Society_estimate = "Estimate",
+        Society_std.error = "Std. Error",
+        Society_statistic = "t value",
+        Society_p.value = "p value"
+    ) %>%
+    tab_options(table.font.size = px(12))
+
+p_value_table1
+
+library(broom)
+library(dplyr)
+library(ggplot2)
+library(effects)
+library(gt)
+
+# 1. Fit the interaction models
+model_society_interact <- lm(
+  ideal_children_society_num ~ age_bracket * present_children + concern_category + marital_status_current + income_monthly + flood_impact +
+    educational_qualification + employment_current,
+  data = regression_data
+)
+
+model_personally_interact <- lm(
+  ideal_children_personally_num ~ age_bracket * present_children + concern_category + marital_status_current + income_monthly + flood_impact +
+    educational_qualification + employment_current,
+  data = regression_data
+)
+
+# 2. Extract tidy summaries
+tidy_personally <- broom::tidy(model_personally_interact) %>% mutate(model = "Personally")
+tidy_society <- broom::tidy(model_society_interact) %>% mutate(model = "Society")
+
+# 3. Extract significant interaction terms (p < 0.05)
+sig_terms_personally <- tidy_personally %>%
+  filter(grepl("age_bracket.*:present_children", term), p.value < 0.05) %>%
+  pull(term)
+
+sig_terms_society <- tidy_society %>%
+  filter(grepl("age_bracket.*:present_children", term), p.value < 0.05) %>%
+  pull(term)
+
+# 4. Get effect estimates for the interaction from both models
+effect_personally <- effect(
+  term = "age_bracket:present_children",
+  mod = model_personally_interact,
+  xlevels = list(age_bracket = levels(regression_data$age_bracket),
+                 present_children = levels(regression_data$present_children))
+) %>% as.data.frame() %>% mutate(model = "Personally Ideal Children")
+
+effect_society <- effect(
+  term = "age_bracket:present_children",
+  mod = model_society_interact,
+  xlevels = list(age_bracket = levels(regression_data$age_bracket),
+                 present_children = levels(regression_data$present_children))
+) %>% as.data.frame() %>% mutate(model = "Society Ideal Children")
+
+# 5. Combine effect data frames
+effect_combined <- bind_rows(effect_personally, effect_society)
+
+# 6. Create a 'term' column matching significant terms format
+effect_combined <- effect_combined %>%
+  mutate(
+    term = paste0("age_bracket", age_bracket, ":present_children", present_children),
+    significant = term %in% c(sig_terms_personally, sig_terms_society)
+  )
+
+# 7. Plot: faint lines for all, highlight significant points
+ggplot(effect_combined, aes(x = present_children, y = fit, color = age_bracket, group = age_bracket)) +
+  geom_line(alpha = 0.3) +  # faint lines for all
+  geom_point(data = filter(effect_combined, significant), size = 4) +  # big points for significant
+  facet_wrap(~model) +
+  labs(
+    title = "Interaction Effects: Age Bracket * Present Children\nSignificant Points Highlighted",
+    x = "Number of Present Children",
+    y = "Predicted Ideal Number of Children",
+    color = "Age Bracket"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# different plot using dotwhisker
+
+library(dotwhisker)
+library(broom)
+library(ggplot2)
+library(patchwork)  # for combining plots
+
+# Assuming filtered_data is ready and models are fit
+
+# Tidy and filter terms (same as before)
+extract_terms <- function(model, model_name) {
+  broom::tidy(model) %>%
+    filter(grepl("concern_category|age_bracket.*:present_children", term)) %>%
+    mutate(model = model_name)
+}
+
+tidy_personally <- extract_terms(model_personally_interact, "Personally Ideal Children")
+tidy_society <- extract_terms(model_society_interact, "Society Ideal Children")
+
+# Add significance stars
+add_p_stars <- function(df) {
+  df %>%
+    mutate(p_stars = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01 ~ "**",
+      p.value < 0.05 ~ "*",
+      TRUE ~ ""
+    ))
+}
+
+tidy_personally <- add_p_stars(tidy_personally)
+tidy_society <- add_p_stars(tidy_society)
+
+# Create plots separately (just one plot object each)
+p1 <- dwplot(tidy_personally) +
+  geom_vline(xintercept = 0, linetype = 2, color = "gray50") +
+  geom_text(aes(x = estimate, y = term, label = p_stars),
+            data = tidy_personally, hjust = -0.3, size = 4) +
+  labs(title = "Personally Ideal Children") +
+  theme_minimal()
+
+p2 <- dwplot(tidy_society) +
+  geom_vline(xintercept = 0, linetype = 2, color = "gray50") +
+  geom_text(aes(x = estimate, y = term, label = p_stars),
+            data = tidy_society, hjust = -0.3, size = 4) +
+  labs(title = "Society Ideal Children") +
+  theme_minimal()
+
+# Combine side-by-side: this produces *exactly 2 plots*
+p1 + p2 + plot_layout(ncol = 2)
+
+
+
+
+
+
