@@ -1,0 +1,217 @@
+# ----------------------------------------
+# INTERACTION MODELS: CLIMATE*FLOODS
+# ----------------------------------------
+model_personally_interact <- lm(
+    ideal_children_personally_num ~ concern_category * flood_impact + sex + present_children +
+        educational_qualification + employment_current + marital_status_current +
+        income_monthly + age_bracket,
+    data = regression_data
+)
+
+model_society_interact <- lm(
+    ideal_children_society_num ~ concern_category * flood_impact + sex + present_children +
+        educational_qualification + employment_current + marital_status_current +
+        income_monthly + age_bracket,
+    data = regression_data
+)
+
+# Function to format p-values
+format_pval <- function(p) {
+    if (is.na(p)) return(NA)
+    if (p < 0.001) return("<0.001")
+    sprintf("%.3f", p)
+}
+
+# Tidy model results
+tidy_personally <- broom::tidy(model_personally_interact) %>%
+    mutate(model = "Personally")
+
+tidy_society <- broom::tidy(model_society_interact) %>%
+    mutate(model = "Society")
+
+# Combine and format for table
+combined_tidy <- bind_rows(tidy_personally, tidy_society)
+
+combined_wide <- combined_tidy %>%
+    select(model, term, estimate, std.error, statistic, p.value) %>%
+    pivot_wider(
+        names_from = model,
+        values_from = c(estimate, std.error, statistic, p.value),
+        names_glue = "{model}_{.value}"
+    ) %>%
+    mutate(
+        Personally_p.value = sapply(Personally_p.value, format_pval),
+        Society_p.value = sapply(Society_p.value, format_pval)
+    )
+# Display table using gt
+p_value_table1 <- combined_wide %>%
+    gt(rowname_col = "term") %>%
+    tab_spanner(
+        label = "Personally Ideal Children",
+        columns = starts_with("Personally")
+    ) %>%
+    tab_spanner(
+        label = "Society Ideal Children",
+        columns = starts_with("Society")
+    ) %>%
+    cols_label(
+        Personally_estimate = "Estimate",
+        Personally_std.error = "Std. Error",
+        Personally_statistic = "t value",
+        Personally_p.value = "p value",
+        Society_estimate = "Estimate",
+        Society_std.error = "Std. Error",
+        Society_statistic = "t value",
+        Society_p.value = "p value"
+    ) %>%
+    tab_options(table.font.size = px(12))
+
+p_value_table1
+
+
+
+# ----------------------------------------
+# INTERACTION MODELS: PERSONALLY
+# ----------------------------------------
+
+model_personally_interaction <- lm(
+    ideal_children_personally_num ~ concern_category + flood_impact + sex +
+        present_children * marital_status_current + 
+        educational_qualification + employment_current +
+        income_monthly * age_bracket,
+    data = regression_data
+)
+
+summary(model_personally_interaction)
+
+# ----------------------------------------
+# INTERACTION MODELS: SOCIETY
+# ----------------------------------------
+
+model_society_interaction <- lm(
+    ideal_children_society_num ~ concern_category + flood_impact + sex +
+        present_children * marital_status_current + 
+        educational_qualification + employment_current +
+        income_monthly * age_bracket,
+    data = regression_data
+)
+
+summary(model_society_interaction)
+
+# ----------------------------------------
+# STRATIFIED MODELS: BY SEX
+# ----------------------------------------
+
+# Female respondents
+model_female <- lm(
+    ideal_children_personally_num ~ concern_category + flood_impact +
+        present_children + educational_qualification + employment_current +
+        marital_status_current + income_monthly + age_bracket,
+    data = regression_data %>% filter(sex == "Female")
+)
+
+summary(model_female)
+
+# Male respondents
+model_male <- lm(
+    ideal_children_personally_num ~ concern_category + flood_impact +
+        present_children + educational_qualification + employment_current +
+        marital_status_current + income_monthly + age_bracket,
+    data = regression_data %>% filter(sex == "Male")
+)
+
+summary(model_male)
+
+# ----------------------------------------
+# STRATIFIED MODELS: BY PARENTAL STATUS
+# ----------------------------------------
+
+# Non-parents
+model_nonparents <- lm(
+    ideal_children_personally_num ~ concern_category + flood_impact + sex +
+        educational_qualification + employment_current +
+        marital_status_current + income_monthly + age_bracket,
+    data = regression_data %>% filter(present_children == "0")
+)
+
+summary(model_nonparents)
+
+# Parents (1+ children)
+model_parents <- lm(
+    ideal_children_personally_num ~ concern_category + flood_impact + sex +
+        present_children + educational_qualification + employment_current +
+        marital_status_current + income_monthly + age_bracket,
+    data = regression_data %>% filter(present_children != "0")
+)
+
+summary(model_parents)
+
+# Load required package
+library(broom)
+library(gt)
+library(dplyr)
+library(tidyr)
+
+# ---- Format p-values ----
+format_pval <- function(p) {
+    if (is.na(p)) return(NA)
+    if (p < 0.001) return("<0.001")
+    sprintf("%.3f", p)
+}
+
+# ---- Tidy and label each model ----
+model_list <- list(
+    "Personally w/ Interaction" = model_personally_interaction,
+    "Society w/ Interaction" = model_society_interaction,
+    "Female only" = model_female,
+    "Male only" = model_male,
+    "Non-parents only" = model_nonparents,
+    "Parents only" = model_parents
+)
+
+tidy_models <- purrr::map2_dfr(
+    model_list,
+    names(model_list),
+    ~ broom::tidy(.x) %>% mutate(model = .y)
+)
+
+# ---- Reshape to wide format ----
+combined_wide <- tidy_models %>%
+    select(model, term, estimate, std.error, statistic, p.value) %>%
+    pivot_wider(
+        names_from = model,
+        values_from = c(estimate, std.error, statistic, p.value),
+        names_glue = "{model}_{.value}"
+    )
+
+# ---- Format p-values ----
+pval_cols <- grep("p.value", names(combined_wide), value = TRUE)
+
+combined_wide[pval_cols] <- lapply(combined_wide[pval_cols], function(p) {
+    sapply(p, format_pval)
+})
+
+# ---- Create GT Table ----
+summary_table <- combined_wide %>%
+    gt(rowname_col = "term") %>%
+    tab_spanner(
+        label = "Interaction Models",
+        columns = contains("Personally w/ Interaction") | contains("Society w/ Interaction")
+    ) %>%
+    tab_spanner(
+        label = "Stratified: Gender",
+        columns = contains("Female only") | contains("Male only")
+    ) %>%
+    tab_spanner(
+        label = "Stratified: Parental Status",
+        columns = contains("Non-parents only") | contains("Parents only")
+    ) %>%
+    cols_label(.list = setNames(
+        nm = names(combined_wide)[-1],
+        object = gsub(".*_", "", names(combined_wide)[-1]) %>%
+            paste0(" (", gsub("_.*", "", names(combined_wide)[-1]), ")")
+    )) %>%
+    tab_options(table.font.size = px(12))
+
+# Display table
+summary_table
