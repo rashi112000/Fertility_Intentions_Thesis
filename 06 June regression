@@ -232,10 +232,10 @@ library(modelsummary)
 
 # Define your clean variable labels
 var_labels <- c(
-    "concern_categoryCONCERNED" = "Concerned (ref: Not Concerned)",
+    "concern_categoryCONCERNED" = "Concerned",
     "concern_categoryVERY CONCERNED" = "Very Concerned",
     "concern_categoryEXTREMELY CONCERNED" = "Extremely Concerned",
-    "flood_impactFlooded" = "Area Flooded",
+    "flood_impactFlooded" = "Flood Impact",
     "sexMale" = "Male",
     "present_children1" = "Has 1 Child",
     "present_children2" = "Has 2 Children",
@@ -243,12 +243,12 @@ var_labels <- c(
     "present_children4" = "Has 4 Children",
     "present_children5" = "Has 5 Children",
     "present_children6 or more" = "Has ≥6 Children",
-    "educational_qualificationElementary to High School" = "Education: Schooling",
-    "educational_qualificationBachelor/Master/PhD" = "Education: Higher",
-    "employment_currentStudent" = "Employment: Student",
-    "employment_currentWorking" = "Employment: Working",
+    "educational_qualificationElementary to High School" = "Elementary to High School",
+    "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
+    "employment_currentStudent" = "Student",
+    "employment_currentWorking" = "Working",
     "marital_status_currentMarried" = "Married",
-    "income_monthlyMiddle income" = "Middle Income",
+    "income_monthlyMiddle income" = "Medium Income",
     "income_monthlyHigh income" = "High Income",
     "age_bracket25–29" = "Age 25–29",
     "age_bracket30–34" = "Age 30–34",
@@ -257,6 +257,168 @@ var_labels <- c(
     "age_bracket45–50" = "Age 45–50"
 )
 
+
+# PERSONALLY VS SOCIETY
+
+library(dplyr)
+library(broom)
+library(tidyr)
+library(gt)
+
+# Format p-values function
+format_pval <- function(p) {
+    if (is.na(p)) return(NA)
+    if (p < 0.001) return("<0.001")
+    sprintf("%.3f", p)
+}
+
+# Tidy model personally
+tidy_personally <- broom::tidy(model_personally) %>%
+    mutate(
+        p_value = sapply(p.value, format_pval),
+        estimate = round(estimate, 3),
+        std_error = round(std.error, 3),
+        stars = case_when(
+            p.value < 0.001 ~ "***",
+            p.value < 0.01  ~ "**",
+            p.value < 0.05  ~ "*",
+            p.value < 0.1   ~ "+",
+            TRUE            ~ ""
+        ),
+        model = "Personally"
+    ) %>%
+    select(term, estimate, std_error, p_value, stars, model)
+
+# Tidy model society
+tidy_society <- broom::tidy(model_society) %>%
+    mutate(
+        p_value = sapply(p.value, format_pval),
+        estimate = round(estimate, 3),
+        std_error = round(std.error, 3),
+        stars = case_when(
+            p.value < 0.001 ~ "***",
+            p.value < 0.01  ~ "**",
+            p.value < 0.05  ~ "*",
+            p.value < 0.1   ~ "+",
+            TRUE            ~ ""
+        ),
+        model = "Society"
+    ) %>%
+    select(term, estimate, std_error, p_value, stars, model)
+
+# Combine both models
+combined <- bind_rows(tidy_personally, tidy_society)
+
+# Replace variable names with friendly labels
+combined$term <- ifelse(combined$term %in% names(var_labels),
+                        var_labels[combined$term],
+                        combined$term)
+
+# Pivot to wide format
+combined_wide <- combined %>%
+    pivot_wider(
+        id_cols = term,
+        names_from = model,
+        values_from = c(estimate, std_error, p_value, stars),
+        names_glue = "{model}_{.value}"
+    )
+
+# Arrange columns
+combined_wide <- combined_wide %>%
+    select(
+        term,
+        Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars,
+        Society_estimate, Society_std_error, Society_p_value, Society_stars
+    )
+
+# Define your subheadings and variables under each
+section_labels <- list(
+    "Climate Concern" = c("Concerned", "Very Concerned", "Extremely Concerned"),
+    "Impact of Floods" = c("Flood Impact"),
+    "Gender" = c("Male"),
+    "Present Children" = c("Has 1 Child", "Has 2 Children", "Has 3 Children", "Has 4 Children", "Has 5 Children", "Has ≥6 Children"),
+    "Education" = c("Elementary to High School", "Bachelor/Master/PhD"),
+    "Employment" = c("Student", "Working"),
+    "Marital Status" = c("Married"),
+    "Income" = c("Medium Income", "High Income"),
+    "Age" = c("Age 25–29", "Age 30–34", "Age 35–39", "Age 40–44", "Age 45–50")
+)
+
+# Create dataframe to store combined rows with subheadings
+combined_wide_sectioned <- data.frame()
+
+for (section in names(section_labels)) {
+    
+    # Add section row (subheading) with NA in numeric columns, empty stars
+    section_row <- data.frame(
+        term = section,
+        Personally_estimate = NA, Personally_std_error = NA, Personally_p_value = NA, Personally_stars = "",
+        Society_estimate = NA, Society_std_error = NA, Society_p_value = NA, Society_stars = "",
+        stringsAsFactors = FALSE
+    )
+    
+    combined_wide_sectioned <- bind_rows(combined_wide_sectioned, section_row)
+    
+    # Filter rows for variables in this section
+    section_vars <- section_labels[[section]]
+    rows_in_section <- combined_wide %>% filter(term %in% section_vars)
+    
+    combined_wide_sectioned <- bind_rows(combined_wide_sectioned, rows_in_section)
+}
+
+# Vector of subheadings (for styling)
+subheadings <- names(section_labels)
+
+# Build the gt table
+gt_table <- combined_wide_sectioned %>%
+    gt() %>%
+    tab_header(
+        title = "OLS Regression: Ideal Number of Children (Personal vs. Societal)"
+    ) %>%
+    cols_label(
+        term = "Variable",
+        Personally_estimate = "Coef.",
+        Personally_std_error = "Std. Err.",
+        Personally_p_value = "p-value",
+        Personally_stars = "",
+        Society_estimate = "Coef.",
+        Society_std_error = "Std. Err.",
+        Society_p_value = "p-value",
+        Society_stars = ""
+    ) %>%
+    sub_missing(
+        columns = everything(),
+        missing_text = "-"
+    ) %>%
+    tab_spanner(
+        label = "Personally",
+        columns = c(Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars)
+    ) %>%
+    tab_spanner(
+        label = "Society",
+        columns = c(Society_estimate, Society_std_error, Society_p_value, Society_stars)
+    ) %>%
+    cols_align(
+        align = "center",
+        columns = -term
+    ) %>%
+    tab_footnote(
+        footnote = "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001",
+        locations = cells_title(groups = "title")
+    ) %>%
+    # Bold the subheading rows in the term column
+    tab_style(
+        style = cell_text(weight = "bold"),
+        locations = cells_body(
+            columns = "term",
+            rows = term %in% subheadings
+        )
+    )
+
+gt_table
+
+
+ # model for PERSONALLY only 
 # Load libraries
 library(broom)
 library(gt)
@@ -314,117 +476,3 @@ tidy_model %>%
         locations = cells_column_labels(columns = vars(stars))
     )
 
-# PERSONALLY VS SOCIETY
-
-library(dplyr)
-library(broom)
-library(tidyr)
-library(gt)
-
-# Format p-values function
-format_pval <- function(p) {
-  if (is.na(p)) return(NA)
-  if (p < 0.001) return("<0.001")
-  sprintf("%.3f", p)
-}
-
-# Tidy model personally
-tidy_personally <- broom::tidy(model_personally) %>%
-  mutate(
-    p_value = sapply(p.value, format_pval),
-    estimate = round(estimate, 3),
-    std_error = round(std.error, 3),
-    stars = case_when(
-      p.value < 0.001 ~ "***",
-      p.value < 0.01  ~ "**",
-      p.value < 0.05  ~ "*",
-      p.value < 0.1   ~ "+",
-      TRUE            ~ ""
-    ),
-    model = "Personally"
-  ) %>%
-  select(term, estimate, std_error, p_value, stars, model)
-
-
-
-# Tidy model society
-tidy_society <- broom::tidy(model_society) %>%
-  mutate(
-    p_value = sapply(p.value, format_pval),
-    estimate = round(estimate, 3),
-    std_error = round(std.error, 3),
-    stars = case_when(
-      p.value < 0.001 ~ "***",
-      p.value < 0.01  ~ "**",
-      p.value < 0.05  ~ "*",
-      p.value < 0.1   ~ "+",
-      TRUE            ~ ""
-    ),
-    model = "Society"
-  ) %>%
-  select(term, estimate, std_error, p_value, stars, model)
-
-# Combine both models
-combined <- bind_rows(tidy_personally, tidy_society)
-
-# Replace variable names with friendly labels
-combined$term <- ifelse(combined$term %in% names(var_labels),
-                        var_labels[combined$term],
-                        combined$term)
-
-# Pivot to wide format to have personal and society columns side by side
-combined_wide <- combined %>%
-  pivot_wider(
-    id_cols = term,
-    names_from = model,
-    values_from = c(estimate, std_error, p_value, stars),
-    names_glue = "{model}_{.value}"
-  )
-
-# Arrange columns: first all Personally, then all Society
-combined_wide <- combined_wide %>%
-  select(
-    term,
-    Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars,
-    Society_estimate, Society_std_error, Society_p_value, Society_stars
-  )
-
-# Build the gt table with updated syntax
-gt_table <- combined_wide %>%
-  gt() %>%
-  tab_header(
-    title = "OLS Regression: Ideal Number of Children (Personal vs. Societal)"
-  ) %>%
-  cols_label(
-    term = "Variable",
-    Personally_estimate = "Coef.",
-    Personally_std_error = "Std. Err.",
-    Personally_p_value = "p-value",
-    Personally_stars = "",
-    Society_estimate = "Coef.",
-    Society_std_error = "Std. Err.",
-    Society_p_value = "p-value",
-    Society_stars = ""
-  ) %>%
-  sub_missing(
-    columns = everything(),
-    missing_text = "-"
-  ) %>%
-  tab_spanner(
-    label = "Personally",
-    columns = c(Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars)
-  ) %>%
-  tab_spanner(
-    label = "Society",
-    columns = c(Society_estimate, Society_std_error, Society_p_value, Society_stars)
-  ) %>%
-  tab_footnote(
-    footnote = "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001",
-    locations = cells_title(groups = "title")
-  ) %>%
-  cols_align(
-    align = "center",
-    columns = -term
-  )
-
-gt_table
