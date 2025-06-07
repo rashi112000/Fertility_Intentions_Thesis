@@ -45,10 +45,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     numeric_number_children == 0 ~ "0",
     numeric_number_children == 1 ~ "1",
     numeric_number_children == 2 ~ "2",
-    numeric_number_children == 3 ~ "3",
-    numeric_number_children == 4 ~ "4",
-    numeric_number_children == 5 ~ "5",
-    numeric_number_children > 5 ~ "6 or more",
+    numeric_number_children >= 3 ~ "3 or more",
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(present_children)) %>%
@@ -186,7 +183,7 @@ regression_data <- reproductive_age_cleaned %>%
     sex = factor(sex, levels = c("Female", "Male")),
 
     present_children = factor(present_children, 
-                              levels = c("0", "1", "2", "3", "4", "5", "6 or more")), 
+                              levels = c("0", "1", "2", "3 or more")), 
 
     educational_qualification = factor(educational_qualification,
                                        levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")),
@@ -243,19 +240,16 @@ library(modelsummary)
 # RE-NAMING VARIABLES TO INCLUDE IN THE TABLE
 # --------------------------------
 
-# Define your clean variable labels
 var_labels <- c(
     "concern_categoryCONCERNED" = "Concerned",
     "concern_categoryVERY CONCERNED" = "Very Concerned",
     "concern_categoryEXTREMELY CONCERNED" = "Extremely Concerned",
     "flood_impactFlooded" = "Flood Impact",
     "sexMale" = "Male",
+    "present_children0" = "Has No Child",
     "present_children1" = "Has 1 Child",
     "present_children2" = "Has 2 Children",
-    "present_children3" = "Has 3 Children",
-    "present_children4" = "Has 4 Children",
-    "present_children5" = "Has 5 Children",
-    "present_children6 or more" = "Has ≥6 Children",
+    "present_children3 or more" = "Has 3 or more Children",
     "educational_qualificationElementary to High School" = "Elementary to High School",
     "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
     "employment_currentStudent" = "Student",
@@ -269,7 +263,6 @@ var_labels <- c(
     "age_bracket40–44" = "Age 40–44",
     "age_bracket45–50" = "Age 45–50"
 )
-
 # --------------------------------
 # PLOTTING PERSONALLY VS SOCIETY IN TABLE
 # --------------------------------
@@ -351,7 +344,7 @@ section_labels <- list(
     "Climate Concern" = c("Concerned", "Very Concerned", "Extremely Concerned"),
     "Impact of Floods" = c("Flood Impact"),
     "Gender" = c("Male"),
-    "Present Children" = c("Has 1 Child", "Has 2 Children", "Has 3 Children", "Has 4 Children", "Has 5 Children", "Has ≥6 Children"),
+    "Present Children" = c("Has No Child", "Has 1 Child", "Has 2 Children", "Has 3 or more Children"),
     "Education" = c("Elementary to High School", "Bachelor/Master/PhD"),
     "Employment" = c("Student", "Working"),
     "Marital Status" = c("Married"),
@@ -432,8 +425,7 @@ gt_table <- combined_wide_sectioned %>%
 
 gt_table
 
-gtsave(gt_table, "Idealchildren personally VS society, Climate&Flood.html")
-
+gtsave(gt_table, "Idealchildren_climate+floods_3catpresentchildren.html")
 
  # model for PERSONALLY only 
 # Load libraries
