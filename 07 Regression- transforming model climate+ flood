@@ -1,0 +1,402 @@
+# Code to include flood damage in our model and plot 
+# --------------------------------
+# LOADING REQUIRED LIBRARIES 
+# --------------------------------
+
+library(dplyr)       # Data manipulation
+library(stringr)     # Text processing
+library(tidyr)       # Data reshaping
+library(gt)          # Beautiful tables
+library(webshot2)    # Save tables as images or documents
+
+# --------------------------------
+# LOADING DATA
+# --------------------------------
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# --------------------------------
+# COMBINING DATA of t0 and t1 
+# --------------------------------
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# --------------------------------
+# CALCULATING AGE 
+# --------------------------------
+data2$age <- 2025 - data2$numeric_birth_year
+
+# --------------------------------
+# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# --------------------------------
+reproductive_age_2 <- data2 %>%
+  filter(!is.na(age), age >= 18, age <= 50)
+
+# ----------------------------------------
+# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# ----------------------------------------
+
+reproductive_age_cleaned <- reproductive_age_2 %>%
+  # Keeping binary sex values
+  filter(sex %in% c("Male", "Female")) %>%
+
+  # Categorizing number of children
+  mutate(present_children = case_when(
+    numeric_number_children == 0 ~ "0",
+    numeric_number_children == 1 ~ "1",
+    numeric_number_children == 2 ~ "2",
+    numeric_number_children == 3 ~ "3",
+    numeric_number_children == 4 ~ "4",
+    numeric_number_children == 5 ~ "5",
+    numeric_number_children > 5 ~ "6 or more",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(present_children)) %>%
+
+  # Simplifying education levels
+  mutate(educational_qualification = case_when(
+    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+    education == "No educational qualification" ~ "No education",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Recoding employment status
+  mutate(employment_current = case_when(
+    employment_status == "Worker" ~ "Working",
+    employment_status == "Student" ~ "Student",
+    employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Simplifying marital status 
+  mutate(marital_status_current = case_when(
+    marital_status == "Married" ~ "Married",
+    marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Grouping income brackets
+  mutate(income_monthly = case_when(
+    net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+    net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+    net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(income_monthly)) %>%
+
+  # Creating age groups
+  mutate(age_bracket = cut(age,
+                           breaks = c(17, 24, 29, 34, 39, 44, 50),
+                           labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                           right = TRUE)) %>%
+
+# Convert concern text to lowercase and recode
+mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+  mutate(concern_category = case_when(
+    str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+    str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+    str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+    str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+    TRUE ~ NA_character_
+  )) %>%
+  # Adding flood impact
+  mutate(flood_impact = case_when(
+    floodedcomune == 1 ~ "Flooded",
+    floodedcomune == 0 ~ "Not flooded",
+    TRUE ~ NA_character_
+  ))
+
+# ----------------------------------------
+# FUNCTION TO CLEAN & CATEGORIZE IDEAL CHILDREN VARIABLES
+# ----------------------------------------
+
+clean_ideal_children <- function(df, var_name) {
+  original_var <- var_name
+  original_var_orig <- paste0("original_", var_name)
+  new_cat_var <- sub("2$", "3", var_name)  # Replace suffix "2" with "3" for cleaned variable
+  
+  # Save original column
+  df[[original_var_orig]] <- df[[original_var]]
+  
+  # Replace whitespace-only strings with NA
+  df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+  
+  # Convert to numeric safely
+  num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+  
+  # Categorize responses
+  df[[new_cat_var]] <- case_when(
+    is.na(num_vals) & !is.na(df[[original_var]]) ~ "Unclear",  # Non-numeric
+    is.na(num_vals) ~ NA_character_,                          # Missing/blank
+    num_vals == 0 ~ "0",
+    num_vals == 1 ~ "1",
+    num_vals == 2 ~ "2",
+    num_vals == 3 ~ "3",
+    num_vals == 4 ~ "4",
+    num_vals == 5 ~ "5",
+    num_vals >= 6 ~ "6 or more",
+    TRUE ~ "Unclear"
+  )
+  
+  return(df)
+}
+
+# ----------------------------------------
+# APPLY FUNCTION TO BOTH IDEAL CHILDREN VARIABLES
+# ----------------------------------------
+
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+# ----------------------------------------
+# CHECK OUTPUT DISTRIBUTIONS
+# ----------------------------------------
+
+table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
+table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
+# ----------------------------------------
+# CLEANING DATA FOR REGRESSION
+# ----------------------------------------
+
+regression_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("6 or more", "Unclear", NA),
+    !ideal_children_society3 %in% c("6 or more", "Unclear", NA),
+    !is.na(concern_category),
+    concern_category != "Unclear"
+  ) %>%
+  mutate(
+    # Create flood impact label
+    flood_impact = case_when(
+      floodedcomune == 1 ~ "Flooded",
+      floodedcomune == 0 ~ "Not flooded",
+      TRUE ~ NA_character_
+    ),
+    
+    # Convert children preferences to numeric
+    ideal_children_personally_num = as.numeric(ideal_children_personally3),
+    ideal_children_society_num = as.numeric(ideal_children_society3),
+
+    # Convert to unordered factors with defined reference levels (first = reference)
+    concern_category = factor(concern_category, 
+                              levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
+
+    sex = factor(sex, levels = c("Female", "Male")),
+
+    present_children = factor(present_children, 
+                              levels = c("0", "1", "2", "3", "4", "5", "6 or more")), 
+
+    educational_qualification = factor(educational_qualification,
+                                       levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")),
+
+    employment_current = factor(employment_current, 
+                                levels = c("Unemployed/Inactive/Retired", "Student", "Working")),
+
+    marital_status_current = factor(marital_status_current, 
+                                    levels = c("Not married", "Married")),
+
+    income_monthly = factor(income_monthly, 
+                            levels = c("Low income", "Middle income", "High income")),
+
+    age_bracket = factor(age_bracket),
+
+    flood_impact = factor(flood_impact, 
+                          levels = c("Not flooded", "Flooded"))
+  )
+
+
+model_personally_log <- lm(log(ideal_children_personally_num) ~ concern_category + flood_impact + sex + present_children + educational_qualification + employment_current +
+                             marital_status_current + income_monthly + age_bracket,
+                           data = regression_data)
+
+model_society_log <- lm(
+  log(ideal_children_society_num) ~ concern_category + flood_impact + sex + present_children +
+    educational_qualification + employment_current + marital_status_current +
+    income_monthly + age_bracket,
+  data = regression_data
+)
+
+# --------------------------------
+# Function to format p-values
+# --------------------------------
+format_pval <- function(p) {
+  if (is.na(p)) return(NA)
+  if (p < 0.001) return("<0.001")
+  sprintf("%.3f", p)
+}
+
+# --------------------------------
+# VARIABLE LABELS
+# --------------------------------
+var_labels <- c(
+  "concern_categoryCONCERNED" = "Concerned",
+  "concern_categoryVERY CONCERNED" = "Very Concerned",
+  "concern_categoryEXTREMELY CONCERNED" = "Extremely Concerned",
+  "flood_impactFlooded" = "Flood Impact",
+  "sexMale" = "Male",
+  "present_children0" = "Has No Child",
+  "present_children1" = "Has 1 Child",
+  "present_children2" = "Has 2 Children",
+  "present_children3 or more" = "Has 3 or more Children",
+  "educational_qualificationElementary to High School" = "Elementary to High School",
+  "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
+  "employment_currentStudent" = "Student",
+  "employment_currentWorking" = "Working",
+  "marital_status_currentMarried" = "Married",
+  "income_monthlyMiddle income" = "Medium Income",
+  "income_monthlyHigh income" = "High Income",
+  "age_bracket25–29" = "Age 25–29",
+  "age_bracket30–34" = "Age 30–34",
+  "age_bracket35–39" = "Age 35–39",
+  "age_bracket40–44" = "Age 40–44",
+  "age_bracket45–50" = "Age 45–50"
+)
+
+# --------------------------------
+# TIDY EACH MODEL
+# --------------------------------
+library(dplyr)
+library(broom)
+library(tidyr)
+library(gt)
+
+tidy_personally_log <- broom::tidy(model_personally_log) %>%
+  mutate(
+    p_value = sapply(p.value, format_pval),
+    estimate = round(estimate, 3),
+    std_error = round(std.error, 3),
+    stars = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.1   ~ "+",
+      TRUE            ~ ""
+    ),
+    model = "Personally"
+  ) %>%
+  select(term, estimate, std_error, p_value, stars, model)
+
+tidy_society_log <- broom::tidy(model_society_log) %>%
+  mutate(
+    p_value = sapply(p.value, format_pval),
+    estimate = round(estimate, 3),
+    std_error = round(std.error, 3),
+    stars = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.1   ~ "+",
+      TRUE            ~ ""
+    ),
+    model = "Society"
+  ) %>%
+  select(term, estimate, std_error, p_value, stars, model)
+
+# --------------------------------
+# COMBINE & FORMAT
+# --------------------------------
+combined <- bind_rows(tidy_personally_log, tidy_society_log)
+
+combined$term <- ifelse(combined$term %in% names(var_labels),
+                        var_labels[combined$term],
+                        combined$term)
+
+combined_wide <- combined %>%
+  pivot_wider(
+    id_cols = term,
+    names_from = model,
+    values_from = c(estimate, std_error, p_value, stars),
+    names_glue = "{model}_{.value}"
+  ) %>%
+  select(
+    term,
+    Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars,
+    Society_estimate, Society_std_error, Society_p_value, Society_stars
+  )
+
+# --------------------------------
+# ADD SECTION HEADINGS
+# --------------------------------
+section_labels <- list(
+  "Climate Concern" = c("Concerned", "Very Concerned", "Extremely Concerned"),
+  "Impact of Floods" = c("Flood Impact"),
+  "Gender" = c("Male"),
+  "Present Children" = c("Has No Child", "Has 1 Child", "Has 2 Children", "Has 3 or more Children"),
+  "Education" = c("Elementary to High School", "Bachelor/Master/PhD"),
+  "Employment" = c("Student", "Working"),
+  "Marital Status" = c("Married"),
+  "Income" = c("Medium Income", "High Income"),
+  "Age" = c("Age 25–29", "Age 30–34", "Age 35–39", "Age 40–44", "Age 45–50")
+)
+
+combined_wide_sectioned <- data.frame()
+
+for (section in names(section_labels)) {
+  section_row <- data.frame(
+    term = section,
+    Personally_estimate = NA, Personally_std_error = NA, Personally_p_value = NA, Personally_stars = "",
+    Society_estimate = NA, Society_std_error = NA, Society_p_value = NA, Society_stars = "",
+    stringsAsFactors = FALSE
+  )
+  section_vars <- section_labels[[section]]
+  rows_in_section <- combined_wide %>% filter(term %in% section_vars)
+  combined_wide_sectioned <- bind_rows(combined_wide_sectioned, section_row, rows_in_section)
+}
+
+# --------------------------------
+# BUILD FINAL GT TABLE
+# --------------------------------
+subheadings <- names(section_labels)
+
+gt_table <- combined_wide_sectioned %>%
+  gt() %>%
+  tab_header(
+    title = "Log-Linear OLS Regression: Ideal Number of Children (Personal vs. Societal)"
+  ) %>%
+  cols_label(
+    term = "Variable",
+    Personally_estimate = "Coef.",
+    Personally_std_error = "Std. Err.",
+    Personally_p_value = "p-value",
+    Personally_stars = "",
+    Society_estimate = "Coef.",
+    Society_std_error = "Std. Err.",
+    Society_p_value = "p-value",
+    Society_stars = ""
+  ) %>%
+  sub_missing(
+    columns = everything(),
+    missing_text = "-"
+  ) %>%
+  tab_spanner(
+    label = "Personally",
+    columns = c(Personally_estimate, Personally_std_error, Personally_p_value, Personally_stars)
+  ) %>%
+  tab_spanner(
+    label = "Society",
+    columns = c(Society_estimate, Society_std_error, Society_p_value, Society_stars)
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = -term
+  ) %>%
+  tab_footnote(
+    footnote = "+ p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001",
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = "term",
+      rows = term %in% subheadings
+    )
+  )
+
+# Display
+gt_table
+
+
+
+
