@@ -328,8 +328,8 @@ combined_unique <- combined %>%
   summarise(
     estimate = mean(estimate, na.rm = TRUE),
     std_error = mean(std_error, na.rm = TRUE),
-    p_value = paste0(unique(p_value), collapse = "; "),  # preserve all p-values (or pick first if preferred)
-    stars = stars[1],  # pick first star symbol
+    p_value = p_value[1],  # or pick first to keep simple
+    stars = stars[1],
     .groups = "drop"
   ) %>%
   rename(term = term_clean)
