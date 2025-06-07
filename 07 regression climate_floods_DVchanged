@@ -157,13 +157,21 @@ regression_data <- reproductive_age_cleaned %>%
       floodedcomune == 1 ~ "Flooded",
       floodedcomune == 0 ~ "Not flooded",
       TRUE ~ NA_character_
-    ),
+    )
+  )
 
-    # Convert children preferences to numeric (will convert factor levels internally to numbers)
-    ideal_children_personally_num = as.numeric(as.factor(ideal_children_personally3)),
-    ideal_children_society_num = as.numeric(as.factor(ideal_children_society3)),
+# Now add the ordinal factor conversion and other factor levels outside the pipe:
+regression_data <- regression_data %>%
+  mutate(
+    ideal_children_personally_ord = factor(ideal_children_personally3,
+                                           levels = c("0-1", "2", "3 or more"),
+                                           ordered = TRUE),
+    ideal_children_society_ord = factor(ideal_children_society3,
+                                        levels = c("0-1", "2", "3 or more"),
+                                        ordered = TRUE),
+    ideal_children_personally_num = as.numeric(ideal_children_personally_ord),
+    ideal_children_society_num = as.numeric(ideal_children_society_ord),
 
-    # Set factors with specified levels
     concern_category = factor(concern_category, 
                               levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
 
