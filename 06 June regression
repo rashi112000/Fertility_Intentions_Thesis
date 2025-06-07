@@ -1,5 +1,4 @@
-# Code to include flood damage in our model 
-# floodedcommune 
+# Code to include flood damage in our model and plot 
 # --------------------------------
 # LOADING REQUIRED LIBRARIES 
 # --------------------------------
@@ -207,7 +206,9 @@ regression_data <- reproductive_age_cleaned %>%
                           levels = c("Not flooded", "Flooded"))
   )
 
-
+# --------------------------------
+# RUNNING REGRESSION 
+# --------------------------------
 model_personally <- lm(ideal_children_personally_num ~ concern_category + flood_impact + sex + present_children + educational_qualification + employment_current +
                          marital_status_current + income_monthly + age_bracket ,
                        data = regression_data)
@@ -220,6 +221,9 @@ model_society <- lm(ideal_children_society_num ~ concern_category + flood_impact
 
 summary(model_society)
 
+# --------------------------------
+# CONVERTING T-VALUE TO p-vlaue
+# --------------------------------
 
 # Function to format p-values from scientific notation to decimal
 format_pval <- function(p) {
@@ -228,7 +232,16 @@ format_pval <- function(p) {
   sprintf("%.3f", p)
 }
 
+
+# --------------------------------
+# MAKING A TABLE WITH REGRESSION DATA INCLUDING P-VALUE
+# --------------------------------
+
 library(modelsummary)
+
+# --------------------------------
+# RE-NAMING VARIABLES TO INCLUDE IN THE TABLE
+# --------------------------------
 
 # Define your clean variable labels
 var_labels <- c(
@@ -257,8 +270,10 @@ var_labels <- c(
     "age_bracket45–50" = "Age 45–50"
 )
 
+# --------------------------------
+# PLOTTING PERSONALLY VS SOCIETY IN TABLE
+# --------------------------------
 
-# PERSONALLY VS SOCIETY
 
 library(dplyr)
 library(broom)
@@ -416,6 +431,8 @@ gt_table <- combined_wide_sectioned %>%
     )
 
 gt_table
+
+gtsave(gt_table, "Idealchildren personally VS society, Climate&Flood.html")
 
 
  # model for PERSONALLY only 
