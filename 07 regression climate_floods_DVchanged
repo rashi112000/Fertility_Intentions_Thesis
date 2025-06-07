@@ -416,5 +416,34 @@ gt_table
 
 gtsave(gt_table, "Idealchildren_floods+climate_DV3cat.html")
 
+# CHECKING IF ASSUMPTIONS OF OLS ARE MET OR NOT
+
+# LINEARITY
+
+# Plot residuals vs. fitted values
+plot(model_personally$fitted.values, resid(model_personally),
+     main = "Residuals vs Fitted (Personal)", xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+# LOOKS LIKE IT IS NOT LINEAR
+
+# HOMOSCEDASTICITY
+# Same as above, Residuals vs. Fitted
+# Can also use Breusch-Pagan test
+library(lmtest)
+bptest(model_personally)
+# not met 
+
+# normality
+
+# Histogram and Q-Q plot
+hist(resid(model_personally), main = "Histogram of Residuals")
+qqnorm(resid(model_personally))
+qqline(resid(model_personally), col = "red")
+
+# MULTICOLLINEARITY
+library(car)
+vif(model_personally)
+
 
 
