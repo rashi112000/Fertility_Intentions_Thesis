@@ -32,7 +32,7 @@ data2$age <- 2025 - data2$numeric_birth_year
 # FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
 # --------------------------------
 reproductive_age_2 <- data2 %>%
-  filter(!is.na(age), age >= 18, age >= 18, age <= 50) # Keep age >= 18 here as well to be safe
+  filter(!is.na(age), age >= 18, age <= 50)
 
 # ----------------------------------------
 # CLEANING & RECODING DEMOGRAPHIC VARIABLES
@@ -100,14 +100,13 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
     TRUE ~ NA_character_
   )) %>%
-  # Adding flood impact (still as character for now)
+  # Adding flood impact
   mutate(flood_impact = case_when(
     floodedcomune == 1 ~ "Flooded",
     floodedcomune == 0 ~ "Not flooded",
     TRUE ~ NA_character_
   )) %>%
   # --- Set Factor Levels and Reference Categories Here ---
-  # The first level in the 'levels' vector becomes the reference category for regression.
   mutate(
     concern_category = factor(concern_category,
                               levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
@@ -118,22 +117,21 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
                               levels = c("0", "1", "2", "3 or more")),
 
     educational_qualification = factor(educational_qualification,
-                                       levels = c("Elementary to High School", "Bachelor/Master/PhD", "No education")),
+                                       levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")), # Changed reference
 
     employment_current = factor(employment_current,
-                                 levels = c("Working", "Student", "Unemployed/Inactive/Retired")),
+                                 levels = c("Unemployed/Inactive/Retired", "Working", "Student")), # Changed reference
 
     marital_status_current = factor(marital_status_current,
-                                     levels = c("Married", "Not married")),
+                                     levels = c("Not married", "Married")), # Changed reference
 
     income_monthly = factor(income_monthly,
                             levels = c("Low income", "Middle income", "High income")),
 
-    # --- Explicitly define flood_impact as a factor with its reference ---
     flood_impact = factor(flood_impact, levels = c("Not flooded", "Flooded"))
   )
 
-# --- CORRECTED clean_ideal_children FUNCTION ---
+# Modifying ideal children here
 clean_ideal_children <- function(df, var_name) {
   original_var <- var_name
   original_var_orig <- paste0("original_", var_name)
@@ -156,8 +154,7 @@ clean_ideal_children <- function(df, var_name) {
     num_vals == 1 ~ "1",
     num_vals == 2 ~ "2",
     num_vals == 3 ~ "3",
-    num_vals == 4 ~ "4",
-    num_vals >= 5 ~ "5 or more",
+    num_vals %in% c(4, 5) ~ "4 or 5", # Assuming 4 or 5 maps to this
     TRUE ~ "There is no ideal number / unclear"
   )
 
@@ -175,8 +172,8 @@ table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 # CLEANING REGRESSION DATA
 regression_data <- reproductive_age_cleaned %>%
   filter(
-    !ideal_children_personally3 %in% c("5 or more" , "Unclear", NA),
-    !ideal_children_society3 %in% c("5 or more" , "Unclear", NA),
+    !ideal_children_personally3 %in% c("Unclear", NA),
+    !ideal_children_society3 %in% c("Unclear", NA),
     !is.na(concern_category),
     concern_category != "Unclear"
   ) %>%
@@ -192,7 +189,7 @@ regression_data <- regression_data %>%
       ideal_children_personally3 == "1" ~ 1,
       ideal_children_personally3 == "2" ~ 2,
       ideal_children_personally3 == "3" ~ 3,
-      ideal_children_personally3 == "4" ~ 4,
+      ideal_children_personally3 == "4 or 5" ~ 4, # Map "4 or 5" to 4 for numerical conversion
       TRUE ~ NA_integer_
     ),
     ideal_children_society_num = case_when(
@@ -200,7 +197,7 @@ regression_data <- regression_data %>%
       ideal_children_society3 == "1" ~ 1,
       ideal_children_society3 == "2" ~ 2,
       ideal_children_society3 == "3" ~ 3,
-      ideal_children_society3 == "4" ~ 4,
+      ideal_children_society3 == "4 or 5" ~ 4, # Map "4 or 5" to 4 for numerical conversion
       TRUE ~ NA_integer_
     )
   ) %>%
@@ -237,6 +234,7 @@ poisson_model_personally <- glm(
 # Calculate and Display Robust Standard Errors
 robust_vcov_personally <- vcovHC(poisson_model_personally, type = "HC1")
 results_personal <- coeftest(poisson_model_personally, vcov = robust_vcov_personally)
+# results_personal # display it
 
 # --- Model for Ideal Children for Society ---
 poisson_model_society <- glm(
@@ -250,6 +248,7 @@ poisson_model_society <- glm(
 # Calculate and Display Robust Standard Errors
 robust_vcov_society <- vcovHC(poisson_model_society, type = "HC1")
 results_society <- coeftest(poisson_model_society, vcov = robust_vcov_society)
+# results_society # display it
 
 
 # -------------------------------------------------------------
@@ -300,6 +299,7 @@ full_results <- full_results %>%
   )
 
 # --- Define the variable labels for better readability ---
+# This dictionary maps the original model term names to user-friendly labels.
 var_labels <- c(
     "(Intercept)" = "Intercept",
     "concern_categoryCONCERNED" = "Concerned",
@@ -310,11 +310,14 @@ var_labels <- c(
     "present_children1" = "1 Child",
     "present_children2" = "2 Children",
     "present_children3 or more" = "3 or more Children",
+    # Updated terms for educational_qualification
+    "educational_qualificationElementary to High School" = "Elementary to High School",
     "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
-    "educational_qualificationNo education" = "No Education",
+    # Updated terms for employment_current
+    "employment_currentWorking" = "Working",
     "employment_currentStudent" = "Student",
-    "employment_currentUnemployed/Inactive/Retired" = "Unemployed/Inactive/Retired",
-    "marital_status_currentNot married" = "Not Married",
+    # Updated term for marital_status_current
+    "marital_status_currentMarried" = "Married",
     "income_monthlyMiddle income" = "Middle Income",
     "income_monthlyHigh income" = "High Income",
     "age_bracket25–29" = "Age 25–29",
@@ -331,7 +334,7 @@ full_results_labeled <- full_results %>%
 
 # --- Define your subheadings and map terms to sections ---
 section_names_order <- c(
-    "Model Intercept", # Renamed "General" to "Model Intercept"
+    "Model Intercept",
     "Climate Concern",
     "Impact of Floods",
     "Gender",
@@ -354,11 +357,11 @@ term_to_section_map <- c(
     "1 Child" = "Present Children",
     "2 Children" = "Present Children",
     "3 or more Children" = "Present Children",
+    "Elementary to High School" = "Education",
     "Bachelor/Master/PhD" = "Education",
-    "No Education" = "Education",
+    "Working" = "Employment",
     "Student" = "Employment",
-    "Unemployed/Inactive/Retired" = "Employment",
-    "Not Married" = "Marital Status",
+    "Married" = "Marital Status",
     "Middle Income" = "Income",
     "High Income" = "Income",
     "Age 25–29" = "Age",
@@ -384,14 +387,14 @@ all_terms_overall_order <- c(
   "1 Child",
   "2 Children",
   "3 or more Children",
-  # Education (Order No Education, then Bachelor/Master/PhD -- assuming this is desired)
-  "No Education",
+  # Education (Order Elementary to High School, then Bachelor/Master/PhD)
+  "Elementary to High School",
   "Bachelor/Master/PhD",
-  # Employment (Order Student, then Unemployed/Inactive/Retired)
+  # Employment (Order Working, then Student)
+  "Working",
   "Student",
-  "Unemployed/Inactive/Retired",
   # Marital Status
-  "Not Married",
+  "Married",
   # Income (Order Middle, then High)
   "Middle Income",
   "High Income",
@@ -409,7 +412,6 @@ full_results_for_gt <- full_results_labeled %>%
   mutate(Section = term_to_section_map[Term]) %>%
   mutate(Section = factor(Section, levels = section_names_order)) %>%
   # Convert 'Term' to a factor with the desired global order
-  # This ensures custom ordering within sections, respecting the 'all_terms_overall_order'
   mutate(Term = factor(Term, levels = all_terms_overall_order[all_terms_overall_order %in% Term])) %>%
   arrange(Section, Term) # This now respects the factor levels of Term for ordering
 
