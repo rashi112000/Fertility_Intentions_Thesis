@@ -154,7 +154,8 @@ clean_ideal_children <- function(df, var_name) {
     num_vals == 1 ~ "1",
     num_vals == 2 ~ "2",
     num_vals == 3 ~ "3",
-    num_vals %in% c(4, 5) ~ "4 or 5", # Assuming 4 or 5 maps to this
+    num_vals == 4 ~ "4",
+    num_vals >= 5 ~ "5 or more",
     TRUE ~ "There is no ideal number / unclear"
   )
 
@@ -491,7 +492,7 @@ regression_table <- full_results_formatted %>%
     source_note = "Models fitted using Poisson regression with log link. Underdispersion handled via robust standard errors."
   ) %>%
   tab_style(
-    style = cell_fill(color = "lightcyan"),
+    style = cell_fill(color = "white"),
     locations = cells_body(
       columns = starts_with("Robust p"),
       rows = full_results$`Robust p_Personal` < 0.05 | full_results$`Robust p_Society` < 0.05
