@@ -334,17 +334,18 @@ full_results_labeled <- full_results %>%
 
 # --- Define your subheadings and map terms to sections ---
 section_names_order <- c(
-    "Model Intercept",
+  
     "Climate Concern",
     "Impact of Floods",
-    "Interaction Terms", # NEW SECTION FOR INTERACTION
+    "Age", 
     "Gender",
+    "Marital Status",
     "Present Children",
     "Education",
     "Employment",
-    "Marital Status",
     "Income",
-    "Age"
+    "Interaction Terms", # NEW SECTION FOR INTERACTION
+    "Model Intercept"
 )
 
 # Create a mapping from the readable Term labels to their section names.
