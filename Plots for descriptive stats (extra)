@@ -1,0 +1,87 @@
+# PLOT FOR PRESENT_CHILDREN VS CLIMATE CONCERN 
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# Ensure climate concern is ordered
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+  mutate(climate_concern = factor(climate_concern, levels = c("Low concern", "Medium concern", "High concern")))
+
+# Compute proportions
+plot_data <- reproductive_age_cleaned %>%
+  count(climate_concern, present_children) %>%
+  group_by(climate_concern) %>%
+  mutate(percentage = n / sum(n))
+
+# Plot with percentages
+ggplot(plot_data, aes(x = climate_concern, y = percentage, fill = present_children)) +
+  geom_col(position = "stack", color = "white", width = 0.7) +
+  geom_text(aes(label = scales::percent(percentage, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 3.5, color = "black") +
+  scale_y_continuous(labels = percent_format(), expand = c(0, 0)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Distribution of Number of Children by Level of Climate Concern",
+    x = "Level of Climate Concern",
+    y = "Percentage",
+    fill = "Number of Children"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    legend.position = "bottom",
+    panel.grid.major.x = element_blank()
+  )
+
+
+# HEATMAP TO SHOW WHERE SOCIETY AND PERSONAL NUMBER MEET 
+
+# Prepare data
+heat_data <- reproductive_age_cleaned %>%
+  filter(
+    !is.na(ideal_children_personally_grouped),
+    !is.na(ideal_children_society_grouped_v3)
+  ) %>%
+  count(ideal_children_society_grouped_v3, ideal_children_personally_grouped) %>%
+  complete(
+    ideal_children_society_grouped_v3,
+    ideal_children_personally_grouped,
+    fill = list(n = 0)  # fill missing tiles with 0
+  )
+
+# Plot with original yellow-to-blue gradient
+ggplot(heat_data, aes(
+  x = ideal_children_personally_grouped,
+  y = ideal_children_society_grouped_v3,
+  fill = n
+)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  geom_text(aes(label = n), color = "black", size = 3.5) +
+  scale_fill_gradient(
+    low = "#FFF7BC",   # yellow
+    high = "#0570B0",  # blue
+    name = "Respondents",
+    limits = c(0, max(heat_data$n)),  # consistent scaling
+    oob = squish
+  ) +
+  coord_fixed() +
+  labs(
+    title = "Alignment Between Personal and Societal Fertility Ideals",
+    subtitle = "Number of respondents by combination of personal and perceived societal ideal number of children",
+    x = "Personal Ideal Number of Children",
+    y = "Societal Ideal Number of Children"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "right"
+  )
+
+ggsave("fertility_alignment_heatmap.png", width = 10, height = 6, dpi = 300, bg = "white")
+

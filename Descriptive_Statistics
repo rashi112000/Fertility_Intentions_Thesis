@@ -1,0 +1,44 @@
+library(readr) # to use read_csv
+library(dplyr)
+
+getwd()
+setwd("/Users/rashisingh/Thesis")
+data <- read.csv("/Users/rashisingh/Thesis/Survey_1_cleaned.csv")
+
+
+# starting to read the data 
+surveydata <- read_csv("Survey_1_cleaned.csv")
+# some warning issue coming with it, will fix as we proceed 
+
+# trying to look at gender now
+# nominal/categorical variable
+
+# Using Count function for gender 
+count(surveydata, sex)
+
+# also tried to use this for Reproductive_age 
+count(Reproductive_age, sex)
+
+# We are using xtabs function to tabulate the data 
+xtabs(~ sex + region, data = Reproductive_age)
+
+
+# another video using tableone package 
+
+install.packages("tableone")
+install.packages("modeest")
+install.packages("readx")
+
+library(tableone)
+library(modest)
+
+
+# Example where you can code the data with different classes- telling them as categorical variables
+
+Reproductive_age$sex <- factor(Reproductive_age$sex, levels = c(0,1), labels = c("male", "female"))
+
+
+
+
+
+
