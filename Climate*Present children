@@ -1013,7 +1013,7 @@ regression_table <- full_results_formatted %>%
     source_note = "Models fitted using Poisson regression with log link. Underdispersion handled via robust standard errors."
   ) %>%
   tab_style(
-    style = cell_fill(color = "lightcyan"),
+    style = cell_fill(color = "white"),
     locations = cells_body(
       columns = starts_with("Robust p"),
       rows = full_results$`Robust p_Personal` < 0.05 | full_results$`Robust p_Society` < 0.05
