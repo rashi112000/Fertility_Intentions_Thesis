@@ -1,28 +1,30 @@
-# Code to include flood damage in our model and plot 
 # --------------------------------
-# LOADING REQUIRED LIBRARIES 
+# LOADING REQUIRED LIBRARIES
 # --------------------------------
 
 library(dplyr)       # Data manipulation
 library(stringr)     # Text processing
 library(tidyr)       # Data reshaping
 library(gt)          # Beautiful tables
-library(webshot2)    # Save tables as images or documents
+library(webshot2)    # Save tables as images or documents (ensure it's installed if you save)
+library(sandwich)    # For vcovHC (Heteroskedasticity Consistent Covariance Matrix)
+library(lmtest)      # For coeftest (to use robust standard errors in summary)
 
 # --------------------------------
 # LOADING DATA
 # --------------------------------
+# Make sure to update this path to where your file is located
 data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
 
 # --------------------------------
-# COMBINING DATA of t0 and t1 
+# COMBINING DATA of t0 and t1
 # --------------------------------
 data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
 data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
 data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
 
 # --------------------------------
-# CALCULATING AGE 
+# CALCULATING AGE
 # --------------------------------
 data2$age <- 2025 - data2$numeric_birth_year
 
@@ -34,6 +36,7 @@ reproductive_age_2 <- data2 %>%
 
 # ----------------------------------------
 # CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# --- Includes setting factor levels and reference categories ---
 # ----------------------------------------
 
 reproductive_age_cleaned <- reproductive_age_2 %>%
@@ -45,10 +48,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     numeric_number_children == 0 ~ "0",
     numeric_number_children == 1 ~ "1",
     numeric_number_children == 2 ~ "2",
-    numeric_number_children == 3 ~ "3",
-    numeric_number_children == 4 ~ "4",
-    numeric_number_children == 5 ~ "5",
-    numeric_number_children > 5 ~ "6 or more",
+    numeric_number_children >= 3 ~ "3 or more",
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(present_children)) %>%
@@ -69,7 +69,7 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     TRUE ~ NA_character_
   )) %>%
 
-  # Simplifying marital status 
+  # Simplifying marital status
   mutate(marital_status_current = case_when(
     marital_status == "Married" ~ "Married",
     marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
@@ -91,8 +91,8 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
                            labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
                            right = TRUE)) %>%
 
-# Convert concern text to lowercase and recode
-mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+  # Convert concern text to lowercase and recode
+  mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
   mutate(concern_category = case_when(
     str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
     str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
@@ -105,106 +105,109 @@ mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
     floodedcomune == 1 ~ "Flooded",
     floodedcomune == 0 ~ "Not flooded",
     TRUE ~ NA_character_
-  ))
+  )) %>%
+  # --- Set Factor Levels and Reference Categories Here ---
+  mutate(
+    concern_category = factor(concern_category,
+                              levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
 
-# ----------------------------------------
-# FUNCTION TO CLEAN & CATEGORIZE IDEAL CHILDREN VARIABLES
-# ----------------------------------------
+    sex = factor(sex, levels = c("Female", "Male")),
 
+    present_children = factor(present_children,
+                              levels = c("0", "1", "2", "3 or more")),
+
+    educational_qualification = factor(educational_qualification,
+                                       levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")),
+
+    employment_current = factor(employment_current,
+                                 levels = c("Unemployed/Inactive/Retired", "Working", "Student")),
+
+    marital_status_current = factor(marital_status_current,
+                                     levels = c("Not married", "Married")),
+
+    income_monthly = factor(income_monthly,
+                            levels = c("Low income", "Middle income", "High income")),
+
+    flood_impact = factor(flood_impact, levels = c("Not flooded", "Flooded"))
+  )
+
+# Modifying ideal children here
 clean_ideal_children <- function(df, var_name) {
   original_var <- var_name
   original_var_orig <- paste0("original_", var_name)
-  new_cat_var <- sub("2$", "3", var_name)  # Replace suffix "2" with "3" for cleaned variable
-  
+  new_cat_var <- sub("2$", "3", var_name)   # Cleaned variable name
+
   # Save original column
   df[[original_var_orig]] <- df[[original_var]]
-  
+
   # Replace whitespace-only strings with NA
   df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
-  
+
   # Convert to numeric safely
   num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
-  
-  # Categorize responses
+
+  # Categorize responses as per your desired categories
   df[[new_cat_var]] <- case_when(
-    is.na(num_vals) & !is.na(df[[original_var]]) ~ "Unclear",  # Non-numeric
-    is.na(num_vals) ~ NA_character_,                          # Missing/blank
+    is.na(num_vals) & !is.na(df[[original_var]]) ~ "There is no ideal number / unclear",
+    is.na(num_vals) ~ NA_character_,
     num_vals == 0 ~ "0",
     num_vals == 1 ~ "1",
     num_vals == 2 ~ "2",
     num_vals == 3 ~ "3",
     num_vals == 4 ~ "4",
-    num_vals == 5 ~ "5",
-    num_vals >= 6 ~ "6 or more",
-    TRUE ~ "Unclear"
+    num_vals >= 5 ~ "5 or more",
+    TRUE ~ "There is no ideal number / unclear"
   )
-  
+
   return(df)
 }
 
-# ----------------------------------------
-# APPLY FUNCTION TO BOTH IDEAL CHILDREN VARIABLES
-# ----------------------------------------
-
+# Apply to both personal and societal ideal children variables
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
 
-# ----------------------------------------
-# CHECK OUTPUT DISTRIBUTIONS
-# ----------------------------------------
-
+# Check tables for confirmation
 table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
 table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
-# ----------------------------------------
-# CLEANING DATA FOR REGRESSION
-# ----------------------------------------
-
+# CLEANING REGRESSION DATA
 regression_data <- reproductive_age_cleaned %>%
   filter(
-    !ideal_children_personally3 %in% c("6 or more", "Unclear", NA),
-    !ideal_children_society3 %in% c("6 or more", "Unclear", NA),
+    !ideal_children_personally3 %in% c("5 or more" , "Unclear", NA),
+    !ideal_children_society3 %in% c("5 or more" , "Unclear", NA),
     !is.na(concern_category),
     concern_category != "Unclear"
   ) %>%
+  filter(!is.na(flood_impact))
+
+
+# Fix the ideal_children_personally_num and ideal_children_society_num creation
+regression_data <- regression_data %>%
   mutate(
-    # Create flood impact label
-    flood_impact = case_when(
-      floodedcomune == 1 ~ "Flooded",
-      floodedcomune == 0 ~ "Not flooded",
-      TRUE ~ NA_character_
+    ideal_children_personally_num = case_when(
+      ideal_children_personally3 == "0" ~ 0,
+      ideal_children_personally3 == "1" ~ 1,
+      ideal_children_personally3 == "2" ~ 2,
+      ideal_children_personally3 == "3" ~ 3,
+      ideal_children_personally3 == "4" ~ 4,
+      TRUE ~ NA_integer_
     ),
-    
-    # Convert children preferences to numeric
-    ideal_children_personally_num = as.numeric(ideal_children_personally3),
-    ideal_children_society_num = as.numeric(ideal_children_society3),
+    ideal_children_society_num = case_when(
+      ideal_children_society3 == "0" ~ 0,
+      ideal_children_society3 == "1" ~ 1,
+      ideal_children_society3 == "2" ~ 2,
+      ideal_children_society3 == "3" ~ 3,
+      ideal_children_society3 == "4" ~ 4,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  filter(!is.na(ideal_children_personally_num),
+         !is.na(ideal_children_society_num))
 
-    # Convert to unordered factors with defined reference levels (first = reference)
-    concern_category = factor(concern_category, 
-                              levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
 
-    sex = factor(sex, levels = c("Female", "Male")),
-
-    present_children = factor(present_children, 
-                              levels = c("0", "1", "2", "3", "4", "5", "6 or more")), 
-
-    educational_qualification = factor(educational_qualification,
-                                       levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")),
-
-    employment_current = factor(employment_current, 
-                                levels = c("Unemployed/Inactive/Retired", "Student", "Working")),
-
-    marital_status_current = factor(marital_status_current, 
-                                    levels = c("Not married", "Married")),
-
-    income_monthly = factor(income_monthly, 
-                            levels = c("Low income", "Middle income", "High income")),
-
-    age_bracket = factor(age_bracket),
-
-    flood_impact = factor(flood_impact, 
-                          levels = c("Not flooded", "Flooded"))
-  )
+# Check the new numerical variables
+table(regression_data$ideal_children_personally_num, useNA = "ifany")
+table(regression_data$ideal_children_society_num, useNA = "ifany")
 
 # --------------------------------
 # RUNNING MODELS AND CREATING A TABLE
@@ -282,10 +285,7 @@ base_labels <- c(
   "sexMale" = "Male",
   "present_children1" = "Has 1 Child",
   "present_children2" = "Has 2 Children",
-  "present_children3" = "Has 3 Children",
-  "present_children4" = "Has 4 Children",
-  "present_children5" = "Has 5 Children",
-  "present_children6 or more" = "Has ≥6 Children",
+  "present_children3 or more" = "Has ≥3 Children",
   "educational_qualificationElementary to High School" = "Elementary to High School",
   "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
   "employment_currentStudent" = "Student",
