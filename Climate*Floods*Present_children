@@ -1,0 +1,512 @@
+# --------------------------------
+# LOADING REQUIRED LIBRARIES
+# --------------------------------
+
+library(dplyr)       # Data manipulation
+library(stringr)     # Text processing
+library(tidyr)       # Data reshaping
+library(gt)          # Beautiful tables
+library(webshot2)    # Save tables as images or documents (ensure it's installed if you save)
+library(sandwich)    # For vcovHC (Heteroskedasticity Consistent Covariance Matrix)
+library(lmtest)      # For coeftest (to use robust standard errors in summary)
+
+# --------------------------------
+# LOADING DATA
+# --------------------------------
+# Make sure to update this path to where your file is located
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# --------------------------------
+# COMBINING DATA of t0 and t1
+# --------------------------------
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# --------------------------------
+# CALCULATING AGE
+# --------------------------------
+data2$age <- 2025 - data2$numeric_birth_year
+
+# --------------------------------
+# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# --------------------------------
+reproductive_age_2 <- data2 %>%
+  filter(!is.na(age), age >= 18, age <= 50)
+
+# ----------------------------------------
+# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# --- Includes setting factor levels and reference categories ---
+# ----------------------------------------
+
+reproductive_age_cleaned <- reproductive_age_2 %>%
+  # Keeping binary sex values
+  filter(sex %in% c("Male", "Female")) %>%
+
+  # Categorizing number of children
+  mutate(present_children = case_when(
+    numeric_number_children == 0 ~ "0",
+    numeric_number_children == 1 ~ "1",
+    numeric_number_children == 2 ~ "2",
+    numeric_number_children >= 3 ~ "3 or more",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(present_children)) %>%
+
+  # Simplifying education levels
+  mutate(educational_qualification = case_when(
+    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+    education == "No educational qualification" ~ "No education",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Recoding employment status
+  mutate(employment_current = case_when(
+    employment_status == "Worker" ~ "Working",
+    employment_status == "Student" ~ "Student",
+    employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Simplifying marital status
+  mutate(marital_status_current = case_when(
+    marital_status == "Married" ~ "Married",
+    marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+    TRUE ~ NA_character_
+  )) %>%
+
+  # Grouping income brackets
+  mutate(income_monthly = case_when(
+    net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+    net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+    net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+    TRUE ~ NA_character_
+  )) %>%
+  filter(!is.na(income_monthly)) %>%
+
+  # Creating age groups
+  mutate(age_bracket = cut(age,
+                           breaks = c(17, 24, 29, 34, 39, 44, 50),
+                           labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                           right = TRUE)) %>%
+
+  # Convert concern text to lowercase and recode
+  mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+  mutate(concern_category = case_when(
+    str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+    str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+    str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+    str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+    TRUE ~ NA_character_
+  )) %>%
+  # Adding flood impact
+  mutate(flood_impact = case_when(
+    floodedcomune == 1 ~ "Flooded",
+    floodedcomune == 0 ~ "Not flooded",
+    TRUE ~ NA_character_
+  )) %>%
+  # --- Set Factor Levels and Reference Categories Here ---
+  mutate(
+    concern_category = factor(concern_category,
+                              levels = c("UNCONCERNED", "CONCERNED", "VERY CONCERNED", "EXTREMELY CONCERNED")),
+
+    sex = factor(sex, levels = c("Female", "Male")),
+
+    present_children = factor(present_children,
+                              levels = c("0", "1", "2", "3 or more")), # Ensure '0' is the reference
+
+    educational_qualification = factor(educational_qualification,
+                                       levels = c("No education", "Elementary to High School", "Bachelor/Master/PhD")),
+
+    employment_current = factor(employment_current,
+                                 levels = c("Unemployed/Inactive/Retired", "Working", "Student")),
+
+    marital_status_current = factor(marital_status_current,
+                                     levels = c("Not married", "Married")),
+
+    income_monthly = factor(income_monthly,
+                            levels = c("Low income", "Middle income", "High income")),
+
+    flood_impact = factor(flood_impact, levels = c("Not flooded", "Flooded"))
+  )
+
+# Modifying ideal children here
+clean_ideal_children <- function(df, var_name) {
+  original_var <- var_name
+  original_var_orig <- paste0("original_", var_name)
+  new_cat_var <- sub("2$", "3", var_name)
+
+  df[[original_var_orig]] <- df[[original_var]]
+  df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+  num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+
+  df[[new_cat_var]] <- case_when(
+    is.na(num_vals) & !is.na(df[[original_var]]) ~ "There is no ideal number / unclear",
+    is.na(num_vals) ~ NA_character_,
+    num_vals == 0 ~ "0",
+    num_vals == 1 ~ "1",
+    num_vals == 2 ~ "2",
+    num_vals == 3 ~ "3",
+    num_vals == 4 ~ "4",
+    num_vals >= 5 ~ "5 or more",
+    TRUE ~ "There is no ideal number / unclear"
+  )
+  return(df)
+}
+
+# Apply to both personal and societal ideal children variables
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+# CLEANING REGRESSION DATA
+regression_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("5 or more" , "Unclear", NA, "There is no ideal number / unclear"),
+    !ideal_children_society3 %in% c("5 or more" , "Unclear", NA, "There is no ideal number / unclear"),
+    !is.na(concern_category),
+    concern_category != "Unclear"
+  ) %>%
+  filter(!is.na(flood_impact))
+
+
+# Fix the ideal_children_personally_num and ideal_children_society_num creation
+regression_data <- regression_data %>%
+  mutate(
+    ideal_children_personally_num = case_when(
+      ideal_children_personally3 == "0" ~ 0,
+      ideal_children_personally3 == "1" ~ 1,
+      ideal_children_personally3 == "2" ~ 2,
+      ideal_children_personally3 == "3" ~ 3,
+      ideal_children_personally3 == "4" ~ 4,
+      TRUE ~ NA_integer_
+    ),
+    ideal_children_society_num = case_when(
+      ideal_children_society3 == "0" ~ 0,
+      ideal_children_society3 == "1" ~ 1,
+      ideal_children_society3 == "2" ~ 2,
+      ideal_children_society3 == "3" ~ 3,
+      ideal_children_society3 == "4" ~ 4,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  filter(!is.na(ideal_children_personally_num),
+         !is.na(ideal_children_society_num))
+
+# -------------------------------------------------------------
+# RUN POISSON REGRESSION MODELS WITH ROBUST STANDARD ERRORS
+# --- MODELS NOW INCLUDE CLIMATE * FLOOD IMPACT * PRESENT CHILDREN INTERACTION ---
+# -------------------------------------------------------------
+
+# --- Model for Ideal Children Personally ---
+poisson_model_personally <- glm(
+  ideal_children_personally_num ~ concern_category * flood_impact * present_children + # NEW Three-way interaction
+    sex + educational_qualification + employment_current + marital_status_current +
+    income_monthly + age_bracket, # All others are linear
+  family = poisson(link = "log"),
+  data = regression_data
+)
+
+# Calculate and Display Robust Standard Errors
+robust_vcov_personally <- vcovHC(poisson_model_personally, type = "HC1")
+results_personal <- coeftest(poisson_model_personally, vcov = robust_vcov_personally)
+
+# --- Model for Ideal Children for Society ---
+poisson_model_society <- glm(
+  ideal_children_society_num ~ concern_category * flood_impact * present_children + # NEW Three-way interaction
+    sex + educational_qualification + employment_current + marital_status_current +
+    income_monthly + age_bracket, # All others are linear
+  family = poisson(link = "log"),
+  data = regression_data
+)
+
+# Calculate and Display Robust Standard Errors
+robust_vcov_society <- vcovHC(poisson_model_society, type = "HC1")
+results_society <- coeftest(poisson_model_society, vcov = robust_vcov_society)
+
+
+# -------------------------------------------------------------
+# Prepare data for the gt table
+# -------------------------------------------------------------
+
+# Extract results for 'personally'
+df_personal <- tibble(
+  Term = rownames(results_personal),
+  Estimate_val = results_personal[, "Estimate"],
+  StdErr_val = results_personal[, "Std. Error"],
+  Pval_val = results_personal[, "Pr(>|z|)"]
+) %>%
+  mutate(
+    IRR = exp(Estimate_val),
+    `Robust SE` = StdErr_val,
+    `Robust p` = Pval_val
+  ) %>%
+  select(Term, IRR, `Robust SE`, `Robust p`) %>%
+  rename_with(~ paste0(.x, "_Personal"), .cols = c("IRR", "Robust SE", "Robust p"))
+
+
+# Extract results for 'society'
+df_society <- tibble(
+  Term = rownames(results_society),
+  Estimate_val = results_society[, "Estimate"],
+  StdErr_val = results_society[, "Std. Error"],
+  Pval_val = results_society[, "Pr(>|z|)"]
+) %>%
+  mutate(
+    IRR = exp(Estimate_val),
+    `Robust SE` = StdErr_val,
+    `Robust p` = Pval_val
+  ) %>%
+  select(Term, IRR, `Robust SE`, `Robust p`) %>%
+  rename_with(~ paste0(.x, "_Society"), .cols = c("IRR", "Robust SE", "Robust p"))
+
+
+# Merge the two data frames by 'Term'
+full_results <- full_join(df_personal, df_society, by = "Term")
+
+# Reorder columns for a side-by-side comparison
+full_results <- full_results %>%
+  select(
+    Term,
+    IRR_Personal, `Robust SE_Personal`, `Robust p_Personal`,
+    IRR_Society, `Robust SE_Society`, `Robust p_Society`
+  )
+
+# --- Define the variable labels for better readability (Main Effects manually) ---
+var_labels_main_effects <- c(
+  "(Intercept)" = "Intercept",
+  "concern_categoryCONCERNED" = "Concerned",
+  "concern_categoryVERY CONCERNED" = "Very Concerned",
+  "concern_categoryEXTREMELY CONCERNED" = "Extremely Concerned",
+  "flood_impactFlooded" = "Flood Impact",
+  "sexMale" = "Male",
+  "present_children1" = "1 Child",
+  "present_children2" = "2 Children",
+  "present_children3 or more" = "3 or more Children",
+  "educational_qualificationElementary to High School" = "Elementary to High School",
+  "educational_qualificationBachelor/Master/PhD" = "Bachelor/Master/PhD",
+  "employment_currentWorking" = "Working",
+  "employment_currentStudent" = "Student",
+  "marital_status_currentMarried" = "Married",
+  "income_monthlyMiddle income" = "Middle Income",
+  "income_monthlyHigh income" = "High Income",
+  "age_bracket25–29" = "Age 25–29",
+  "age_bracket30–34" = "Age 30–34",
+  "age_bracket35–39" = "Age 35–39",
+  "age_bracket40–44" = "Age 40–44",
+  "age_bracket45–50" = "Age 45–50"
+)
+
+# --- AUTOMATIC DETECTION AND LABELING OF INTERACTION TERMS ---
+# Get all unique terms from the model output
+all_raw_terms <- full_results$Term
+
+# Filter for terms containing a colon (interaction terms)
+raw_interaction_terms <- all_raw_terms[str_detect(all_raw_terms, ":")]
+
+# Function to create readable labels for interaction terms
+create_interaction_label <- function(raw_term, main_effect_labels) {
+  parts <- str_split(raw_term, ":")[[1]]
+  labeled_parts <- sapply(parts, function(p) {
+    # Remove the variable name prefix (e.g., "concern_category", "flood_impact", "present_children")
+    clean_p <- p
+    for (prefix in c("concern_category", "flood_impact", "present_children")) {
+      clean_p <- str_remove(clean_p, prefix)
+    }
+    # For main effect categories, find the label
+    label <- main_effect_labels[p]
+    if (is.na(label)) {
+      label <- main_effect_labels[paste0(str_extract(p, "^[a-zA-Z_]+"), clean_p)]
+      if (is.na(label)) {
+        label <- clean_p
+      }
+    }
+    # Specific adjustments for readability
+    if (label == "CONCERNED") label <- "Concerned"
+    if (label == "VERY CONCERNED") label <- "Very Concerned"
+    if (label == "EXTREMELY CONCERNED") label <- "Extremely Concerned"
+    if (label == "Flooded") label <- "Flooded"
+    if (label == "1") label <- "1 Child"
+    if (label == "2") label <- "2 Children"
+    if (label == "3 or more") label <- "3+ Children"
+
+    return(label)
+  })
+  paste(labeled_parts, collapse = " : ")
+}
+
+# Create dynamic labels for interaction terms
+var_labels_interactions <- sapply(raw_interaction_terms, create_interaction_label,
+                                  main_effect_labels = var_labels_main_effects)
+
+# Combine main effect labels with dynamic interaction labels
+var_labels <- c(var_labels_main_effects, var_labels_interactions)
+
+# --- Apply the new labels to the 'Term' column ---
+full_results_labeled <- full_results %>%
+  mutate(Term = recode(Term, !!!var_labels))
+
+
+# --- Define your subheadings and map terms to sections ---
+section_names_order <- c(
+  "Model Intercept",
+  "Climate Concern (Main Effect)", # Clarified as Main Effect
+  "Present Children (Main Effect)", # Clarified as Main Effect
+  "Impact of Floods (Main Effect)", # Clarified as Main Effect
+  "Interaction Terms (Climate * Flood Impact * Present Children)", # NEW SECTION HEADING for 3-way
+  "Gender",
+  "Education",
+  "Employment",
+  "Marital Status",
+  "Income",
+  "Age"
+)
+
+# Create a mapping for main effects manually
+term_to_section_map_main_effects <- c(
+  "Intercept" = "Model Intercept",
+  "Concerned" = "Climate Concern (Main Effect)",
+  "Very Concerned" = "Climate Concern (Main Effect)",
+  "Extremely Concerned" = "Climate Concern (Main Effect)",
+  "Flood Impact" = "Impact of Floods (Main Effect)",
+  "Male" = "Gender",
+  "1 Child" = "Present Children (Main Effect)",
+  "2 Children" = "Present Children (Main Effect)",
+  "3 or more Children" = "Present Children (Main Effect)",
+  "Elementary to High School" = "Education",
+  "Bachelor/Master/PhD" = "Education",
+  "Working" = "Employment",
+  "Student" = "Employment",
+  "Married" = "Marital Status",
+  "Middle Income" = "Income",
+  "High Income" = "Income",
+  "Age 25–29" = "Age",
+  "Age 30–34" = "Age",
+  "Age 35–39" = "Age",
+  "Age 40–44" = "Age",
+  "Age 45–50" = "Age"
+)
+
+# Create mapping for interaction terms dynamically
+term_to_section_map_interactions <- setNames(
+  rep("Interaction Terms (Climate * Flood Impact * Present Children)", length(var_labels_interactions)),
+  var_labels_interactions
+)
+
+# Combine all term to section mappings
+term_to_section_map <- c(term_to_section_map_main_effects, term_to_section_map_interactions)
+
+# --- Define a global desired order for all terms that will appear in the table ---
+all_terms_overall_order <- c(
+  "Intercept",
+  # Main Effects first
+  "Concerned", "Very Concerned", "Extremely Concerned",
+  "1 Child", "2 Children", "3 or more Children",
+  "Flood Impact",
+  # Now, dynamically add interaction terms in a sorted manner
+  sort(var_labels_interactions), # Sort interaction labels alphabetically
+  # Remaining Main Effects
+  "Male",
+  "Elementary to High School", "Bachelor/Master/PhD",
+  "Working", "Student",
+  "Married",
+  "Middle Income", "High Income",
+  "Age 25–29", "Age 30–34", "Age 35–39", "Age 40–44", "Age 45–50"
+)
+
+
+# --- Add the 'Section' column and order the data frame for gt ---
+full_results_for_gt <- full_results_labeled %>%
+  mutate(Section = term_to_section_map[Term]) %>%
+  mutate(Section = factor(Section, levels = section_names_order)) %>%
+  mutate(Term = factor(Term, levels = all_terms_overall_order[all_terms_overall_order %in% Term])) %>%
+  arrange(Section, Term)
+
+
+# --- Define the helper function for p-value stars ---
+format_p_value_with_stars <- function(p_value) {
+  stars <- ""
+  if (p_value < 0.001) {
+    stars <- "***"
+  } else if (p_value < 0.01) {
+    stars <- "**"
+  } else if (p_value < 0.05) {
+    stars <- "*"
+  }
+  p_formatted <- sprintf("%.3f", p_value)
+  if (p_value < 0.001 && p_value != 0) {
+    p_formatted <- "<0.001"
+  } else if (p_value == 0) {
+    p_formatted <- "0.000"
+  }
+  paste0(p_formatted, stars)
+}
+
+# --- Format p-value columns to character strings BEFORE gt() ---
+full_results_formatted <- full_results_for_gt %>%
+  mutate(
+    across(starts_with("Robust p"), ~sapply(.x, format_p_value_with_stars))
+  )
+
+# -------------------------------------------------------------
+# Create the gt table with desired formatting
+# -------------------------------------------------------------
+regression_table <- full_results_formatted %>%
+  gt(groupname_col = "Section",
+     rowname_col = "Term") %>%
+  tab_header(
+    title = md("**Poisson Regression Results with Robust Standard Errors**"),
+    subtitle = "Comparing Ideal Number of Children Personally vs. For Society (with Climate * Flood Impact * Present Children Interaction)" # Updated subtitle
+  ) %>%
+  tab_spanner(
+    label = md("**Ideal Children Personally**"),
+    columns = starts_with(c("IRR_Personal", "Robust SE_Personal", "Robust p_Personal"))
+  ) %>%
+  tab_spanner(
+    label = md("**Ideal Children for Society**"),
+    columns = starts_with(c("IRR_Society", "Robust SE_Society", "Robust p_Society"))
+  ) %>%
+  cols_label(
+    IRR_Personal = md("IRR"),
+    `Robust SE_Personal` = md("Robust SE"),
+    `Robust p_Personal` = md("p-value"),
+    IRR_Society = md("IRR"),
+    `Robust SE_Society` = md("Robust SE"),
+    `Robust p_Society` = md("p-value")
+  ) %>%
+  fmt_number(
+    columns = starts_with("IRR"),
+    decimals = 3
+  ) %>%
+  fmt_number(
+    columns = starts_with("Robust SE"),
+    decimals = 4
+  ) %>%
+  tab_footnote(
+    footnote = "IRR (Incidence Rate Ratio): Multiplicative change in the expected count for a one-unit increase in the predictor (or for a given category relative to the baseline).",
+    locations = cells_column_labels(starts_with("IRR"))
+  ) %>%
+  tab_footnote(
+    footnote = "Robust SE: Standard errors adjusted for potential heteroskedasticity (and underdispersion in this case), providing more reliable inference.",
+    locations = cells_column_labels(starts_with("Robust SE"))
+  ) %>%
+  tab_footnote(
+    footnote = "p-value: Probability value based on robust standard errors, indicating statistical significance. (* p < 0.05, ** p < 0.01, *** p < 0.001)",
+    locations = cells_column_labels(starts_with("Robust p"))
+  ) %>%
+  tab_source_note(
+    source_note = "Models fitted using Poisson regression with log link. Underdispersion handled via robust standard errors."
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "white"),
+    locations = cells_body(
+      columns = starts_with("Robust p"),
+      rows = full_results$`Robust p_Personal` < 0.05 | full_results$`Robust p_Society` < 0.05
+    )
+  ) %>%
+  tab_options(
+    row_group.font.weight = "bold"
+  )
+
+# Display the table
+regression_table
