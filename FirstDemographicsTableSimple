@@ -128,26 +128,23 @@ simple_freq_table <- function(data, variable, section_name, levels_order = NULL)
 # --------------------------------
 # GENERATING FREQUENCY TABLE
 # --------------------------------
-sex_tab <- simple_freq_table(reproductive_age_cleaned, "sex", "SEX")
 age_tab <- simple_freq_table(reproductive_age_cleaned, "age_bracket", "AGE")
+sex_tab <- simple_freq_table(reproductive_age_cleaned, "sex", "SEX")
+marital_tab <- simple_freq_table(reproductive_age_cleaned, "marital_status_current", "MARITAL STATUS")
 children_tab <- simple_freq_table(reproductive_age_cleaned, "present_children", "PRESENT CHILDREN")
 edu_tab <- simple_freq_table(reproductive_age_cleaned, "educational_qualification", "EDUCATION",   levels_order = c("No education", "Elementary to High School", "Bachelor/Master/PhD"))
-
 emp_tab <- simple_freq_table(
   reproductive_age_cleaned,
   "employment_current",
   "EMPLOYMENT STATUS",
   levels_order = c("Unemployed/Inactive/Retired", "Student", "Working")
 )
-
 income_tab <- simple_freq_table(
   reproductive_age_cleaned,
   "income_monthly",
   "INCOME",
   levels_order = c("Low income", "Medium income","High income" )
 )
-
-marital_tab <- simple_freq_table(reproductive_age_cleaned, "marital_status_current", "MARITAL STATUS")
 flood_tab <- simple_freq_table(reproductive_age_cleaned, "flood_impact", "FLOOD IMPACT")
 
 
@@ -161,8 +158,8 @@ final_simple_table <- bind_rows(
 
 summary_gt <- final_simple_table %>%
   arrange(factor(Section, levels = c(
-    "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION", 
-    "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS", "FLOOD IMPACT"
+    "AGE", "SEX", "MARITAL STATUS", "PRESENT CHILDREN", "EDUCATION", 
+    "EMPLOYMENT STATUS", "INCOME","FLOOD IMPACT"
   ))) %>%
   gt(groupname_col = "Section") %>%
   tab_header(
