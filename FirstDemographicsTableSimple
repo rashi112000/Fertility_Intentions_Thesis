@@ -22,13 +22,39 @@ data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
 # --------------------------------
 # CALCULATING AGE 
 # --------------------------------
+
+
 data2$age <- 2025 - data2$numeric_birth_year
 
 # --------------------------------
 # FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
 # --------------------------------
+
+data2$age <- as.numeric(as.character(data2$age))
 reproductive_age_2 <- data2 %>%
-  filter(!is.na(age), age >= 18, age <= 50)
+    filter(!is.na(age), age >= 18, age <= 50)
+
+# --------------------------------
+# TO CHECK IF EVERYTHING IS WORKING OR NOT
+# --------------------------------
+
+reproductive_age_2 %>% count(age) %>% arrange(desc(age))
+
+# --------------------------------
+# CHECKING THE NUMBER
+# --------------------------------
+
+reproductive_age_2 %>%
+    summarise(total_respondents = n()) # 2127
+# OR 
+
+nrow(reproductive_age_2)
+# OR 
+
+reproductive_age_2 %>%
+  count(age) %>%
+  summarise(total = sum(n))
+
 
 # --------------------------------
 # STANDARDIZING CLIMATE CONCERN AND CREATING DIFFERENT CATEGORIES
@@ -106,6 +132,9 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
                            breaks = c(17, 24, 29, 34, 39, 44, 50),
                            labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
                            right = TRUE))
+
+# TOTAL IS 1905 now 
+
   
 # --------------------------------
 # FREQUENCY TABLE FUNCTION
