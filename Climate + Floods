@@ -331,53 +331,64 @@ var_labels <- c(
 full_results_labeled <- full_results %>%
   mutate(Term = recode(Term, !!!var_labels))
 
-
-# --- Define your subheadings and map terms to sections ---
+# --- Define your section order and labels with reference categories ---
 section_names_order <- c(
-  
-    "Climate Concern",
-    "Impact of Floods",
-    "Age", 
-    "Gender",
-    "Marital Status",
-    "Present Children",
-    "Education",
-    "Employment",
-    "Income",
-    "Interaction Terms", # NEW SECTION FOR INTERACTION
-    "Model Intercept"
+  "Climate Concern",
+  "Impact of Floods",
+  "Interaction Terms",
+  "Gender",
+  "Age",
+  "Marital Status",
+  "Present Children",
+  "Education",
+  "Employment",
+  "Income",
+  "Model Intercept"
 )
 
-# Create a mapping from the readable Term labels to their section names.
+section_labels_with_refs <- c(
+  "Climate Concern" = "Climate Concern (Ref: Not Concerned)",
+  "Impact of Floods" = "Impact of Floods (Ref: Not Flooded)",
+  "Interaction Terms" = "Interaction Terms",
+  "Gender" = "Gender (Ref: Female)",
+  "Age" = "Age (Ref: 18-24)",
+  "Marital Status" = "Marital Status (Ref: Not Married)",
+  "Present Children" = "Present Children (Ref: No Children)",
+  "Education" = "Education (Ref: No Education)",
+  "Employment" = "Employment (Ref: Unemployed)",
+  "Income" = "Income (Ref: Low Income)",
+  "Model Intercept" = "Model Intercept"
+)
+
+# --- Map terms to sections ---
 term_to_section_map <- c(
-    "Intercept" = "Model Intercept",
-    "Concerned" = "Climate Concern",
-    "Very Concerned" = "Climate Concern",
-    "Extremely Concerned" = "Climate Concern",
-    "Flood Impact" = "Impact of Floods",
-    "Male" = "Gender",
-    "1 Child" = "Present Children",
-    "2 Children" = "Present Children",
-    "3 or more Children" = "Present Children",
-    "Elementary to High School" = "Education",
-    "Bachelor/Master/PhD" = "Education",
-    "Working" = "Employment",
-    "Student" = "Employment",
-    "Married" = "Marital Status",
-    "Middle Income" = "Income",
-    "High Income" = "Income",
-    "Age 25–29" = "Age",
-    "Age 30–34" = "Age",
-    "Age 35–39" = "Age",
-    "Age 40–44" = "Age",
-    "Age 45–50" = "Age",
-    # --- ADDED INTERACTION TERMS TO MAP ---
-    "Concerned : Flood Impact" = "Interaction Terms",
-    "Very Concerned : Flood Impact" = "Interaction Terms",
-    "Extremely Concerned : Flood Impact" = "Interaction Terms"
+  "Intercept" = "Model Intercept",
+  "Concerned" = "Climate Concern",
+  "Very Concerned" = "Climate Concern",
+  "Extremely Concerned" = "Climate Concern",
+  "Flood Impact" = "Impact of Floods",
+  "Concerned : Flood Impact" = "Interaction Terms",
+  "Very Concerned : Flood Impact" = "Interaction Terms",
+  "Extremely Concerned : Flood Impact" = "Interaction Terms",
+  "Male" = "Gender",
+  "Age 25–29" = "Age",
+  "Age 30–34" = "Age",
+  "Age 35–39" = "Age",
+  "Age 40–44" = "Age",
+  "Age 45–50" = "Age",
+  "Married" = "Marital Status",
+  "1 Child" = "Present Children",
+  "2 Children" = "Present Children",
+  "3 or more Children" = "Present Children",
+  "Elementary to High School" = "Education",
+  "Bachelor/Master/PhD" = "Education",
+  "Working" = "Employment",
+  "Student" = "Employment",
+  "Middle Income" = "Income",
+  "High Income" = "Income"
 )
 
-# --- Define a global desired order for all terms that will appear in the table ---
+# --- Define desired order of terms ---
 all_terms_overall_order <- c(
   "Intercept",
   # Climate Concern
@@ -392,39 +403,43 @@ all_terms_overall_order <- c(
   "Extremely Concerned : Flood Impact",
   # Gender
   "Male",
-  # Present Children (Order 1, 2, 3+)
-  "1 Child",
-  "2 Children",
-  "3 or more Children",
-  # Education (Order Elementary to High School, then Bachelor/Master/PhD)
-  "Elementary to High School",
-  "Bachelor/Master/PhD",
-  # Employment (Order Working, then Student)
-  "Working",
-  "Student",
-  # Marital Status
-  "Married",
-  # Income (Order Middle, then High)
-  "Middle Income",
-  "High Income",
-  # Age (Ordered by increasing age groups)
+  # Age
   "Age 25–29",
   "Age 30–34",
   "Age 35–39",
   "Age 40–44",
-  "Age 45–50"
+  "Age 45–50",
+  # Marital Status
+  "Married",
+  # Present Children
+  "1 Child",
+  "2 Children",
+  "3 or more Children",
+  # Education
+  "Elementary to High School",
+  "Bachelor/Master/PhD",
+  # Employment
+  "Working",
+  "Student",
+  # Income
+  "Middle Income",
+  "High Income"
 )
+# --- Prepare the dataset for gt ---
 
-
-# --- Add the 'Section' column and order the data frame for gt ---
 full_results_for_gt <- full_results_labeled %>%
-  mutate(Section = term_to_section_map[Term]) %>%
-  mutate(Section = factor(Section, levels = section_names_order)) %>%
-  mutate(Term = factor(Term, levels = all_terms_overall_order[all_terms_overall_order %in% Term])) %>%
-  arrange(Section, Term)
+  mutate(
+    Section = term_to_section_map[Term],
+    Section = factor(Section, levels = section_names_order),
+    Term = factor(Term, levels = all_terms_overall_order[all_terms_overall_order %in% Term])
+  ) %>%
+  arrange(Section, Term) %>%
+  # Recode Section factor levels to include reference labels
+  mutate(
+    Section = recode(Section, !!!section_labels_with_refs)
+  )
 
-
-# --- Define the helper function for p-value stars ---
+# --- Helper function for formatting p-values with stars ---
 format_p_value_with_stars <- function(p_value) {
   stars <- ""
   if (p_value < 0.001) {
@@ -443,21 +458,18 @@ format_p_value_with_stars <- function(p_value) {
   paste0(p_formatted, stars)
 }
 
-# --- Format p-value columns to character strings BEFORE gt() ---
+# --- Format p-value columns before gt ---
 full_results_formatted <- full_results_for_gt %>%
   mutate(
     across(starts_with("Robust p"), ~sapply(.x, format_p_value_with_stars))
   )
 
-# -------------------------------------------------------------
-# Create the gt table with desired formatting
-# -------------------------------------------------------------
+# --- Build the gt table ---
 regression_table <- full_results_formatted %>%
-  gt(groupname_col = "Section",
-     rowname_col = "Term") %>%
+  gt(groupname_col = "Section", rowname_col = "Term") %>%
   tab_header(
     title = md("**Poisson Regression Results with Robust Standard Errors**"),
-    subtitle = "Comparing Ideal Number of Children Personally vs. For Society (with Interaction)" # Updated subtitle
+    subtitle = "Comparing Ideal Number of Children Personally vs. For Society"
   ) %>%
   tab_spanner(
     label = md("**Ideal Children Personally**"),
@@ -501,12 +513,26 @@ regression_table <- full_results_formatted %>%
   tab_style(
     style = cell_fill(color = "white"),
     locations = cells_body(
-      columns = starts_with("Robust p"),
-      rows = full_results$`Robust p_Personal` < 0.05 | full_results$`Robust p_Society` < 0.05
+      columns = starts_with("Robust p")
     )
-  ) %>%
+ )%>%
+  cols_align(
+    align = "left",
+    columns = everything()
+  )%>%
   tab_options(
-    row_group.font.weight = "bold"
+    table.font.names = c("Times New Roman"),
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    heading.title.font.weight = "bold",
+    column_labels.font.weight = "bold",
+    column_labels.font.size = 14,
+    row_group.font.weight = "bold",
+    data_row.padding = px(4),
+    table.border.top.color = "black",
+    table.border.bottom.color = "black",
+    row_group.border.top.color = "gray80",
+    row_group.border.bottom.color = "gray80"
   )
 
 # Display the table
