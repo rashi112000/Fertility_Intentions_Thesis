@@ -166,7 +166,7 @@ summary_gt <- final_simple_table %>%
   ))) %>%
   gt(groupname_col = "Section") %>%
   tab_header(
-    title = md("**Table. Demographic Characteristics of Reproductive-Aged Respondents (18–50)**")
+    title = md("**Table 1. Demographic Characteristics of Reproductive-Aged Respondents (18–50)**")
   ) %>%
   cols_label(
     Category = "Category",
