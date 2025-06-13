@@ -216,15 +216,14 @@ flood_tab <- simple_freq_table(reproductive_age_cleaned, "flood_impact", "FLOOD 
 # FINAL TABLE: BIND ROWS & ORDER SECTIONS
 # --------------------------------
 final_simple_table_updated <- bind_rows(
-    sex_tab, age_tab, children_tab,
-    edu_tab, emp_tab, income_tab, marital_tab, flood_tab,
+    sex_tab, age_tab, marital_tab, children_tab, edu_tab, emp_tab, income_tab, flood_tab,
     ideal_personal_stats, ideal_society_stats
 )
 
 summary_gt <- final_simple_table_updated %>%
     arrange(factor(Section, levels = c(
-        "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION", 
-        "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS", "FLOOD IMPACT",
+        "SEX", "AGE", "MARITAL STATUS", "PRESENT CHILDREN", "EDUCATION", 
+        "EMPLOYMENT STATUS", "INCOME", "FLOOD IMPACT",
         "IDEAL NUMBER OF CHILDREN"
     ))) %>%
     gt(groupname_col = "Section") %>%
