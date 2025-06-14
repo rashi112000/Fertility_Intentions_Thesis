@@ -107,6 +107,33 @@ category_counts <- Reproductive_age %>%
 
 print(category_counts)
 
+ggplot(category_counts_clean, aes(x = Concern_Category, y = percentage, fill = Concern_Category)) +
+    geom_bar(stat = "identity", width = 0.4) +
+    geom_text(aes(label = paste0(round(percentage, 1), "%")), hjust = -0.1, size = 3.5, color = "black") +
+    scale_fill_manual(values = c(
+        "UNCONCERNED" = "#d9d9d9",
+        "CONCERNED" = "#bdbdbd",
+        "VERY CONCERNED" = "#969696",
+        "EXTREMELY CONCERNED" = "#636363"
+    )) +
+    labs(
+        title = "Climate Concern Among Reproductive-Age Respondents",
+        x = NULL,
+        y = "Percentage of Respondents"
+    ) +
+    coord_flip() +
+    theme_minimal(base_size = 11) +
+    theme(
+        legend.position = "none",
+        axis.text.y = element_text(size = 9, color = "black"),
+        axis.text.x = element_text(size = 9, color = "black"),
+        plot.title = element_text(face = "bold", hjust = 0.5, color = "black"),
+        plot.caption = element_text(size = 9, hjust = 0, margin = margin(t = 10), color = "black"),
+        panel.grid.major = element_blank(),  # <---- removes major grid lines
+        panel.grid.minor = element_blank(),  # <---- removes minor grid lines
+        plot.margin = margin(10, 10, 10, 10)
+    )
+
 
 
 
