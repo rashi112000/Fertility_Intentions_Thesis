@@ -468,7 +468,7 @@ full_results_formatted <- full_results_for_gt %>%
 regression_table <- full_results_formatted %>%
   gt(groupname_col = "Section", rowname_col = "Term") %>%
   tab_header(
-    title = md("**Poisson Regression Results with Robust Standard Errors**"),
+    title = md("**Table 3. Poisson Regression Results with Robust Standard Errors**"),
     subtitle = "Comparing Ideal Number of Children Personally vs. For Society"
   ) %>%
   tab_spanner(
