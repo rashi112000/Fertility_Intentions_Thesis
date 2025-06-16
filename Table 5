@@ -99,9 +99,10 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
 
   # Creating a 3-level climate concern variable
   mutate(climate_concern = case_when(
-    concern_category == "UNCONCERNED" ~ "Low concern",
-    concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
-    concern_category == "EXTREMELY CONCERNED" ~ "High concern",
+    concern_category == "UNCONCERNED" ~ "Unconcerned",
+    concern_category ==  "CONCERNED" ~ "Concerned",
+    concern_category ==  "VERY CONCERNED" ~ "Very concerned",
+    concern_category == "EXTREMELY CONCERNED" ~ "Extremely concerned",
     TRUE ~ NA_character_
   ))
 
@@ -112,26 +113,34 @@ format_percent <- function(x, digits = 1) {
   paste0(round(100 * x, digits), "%")
 }
 
+# --------------------------------
+# UPDATED HELPER FUNCTION FOR 4 CATEGORIES
+# --------------------------------
 summarize_by_group <- function(data, variable, group_var = "climate_concern") {
   # Raw counts
   raw_counts <- data %>%
     count(!!sym(variable), !!sym(group_var)) %>%
     pivot_wider(names_from = !!sym(group_var), values_from = n, values_fill = 0)
-  
-  # Add total across groups for each category
+
+  # Ensure correct column order
+  raw_counts <- raw_counts %>%
+    select(
+      !!sym(variable),
+      "Unconcerned", "Concerned", "Very concerned", "Extremely concerned",
+      everything()
+    )
+
+  # Add total across groups
   raw_counts <- raw_counts %>%
     mutate(Total = rowSums(across(where(is.numeric))))
 
-  # Compute row percentages
+  # Percent with count
   percent_counts <- raw_counts %>%
     mutate(across(where(is.numeric), ~ paste0(.x, " (", format_percent(.x / Total), ")")))
 
-  # Rename first column to "Category"
   colnames(percent_counts)[1] <- "Category"
-  
   return(percent_counts)
 }
-
 
 # --------------------------------
 # CREATING SUMMARY TABLES FOR EACH VARIABLE
@@ -139,20 +148,23 @@ summarize_by_group <- function(data, variable, group_var = "climate_concern") {
 sex_tab <- summarize_by_group(reproductive_age_cleaned, "sex") %>% mutate(section = "SEX")
 age_tab <- summarize_by_group(reproductive_age_cleaned, "age_bracket") %>% mutate(section = "AGE")
 
-# Add mean and standard deviation of age
+# Add mean and standard deviation of age per concern level
 age_mean_sd <- tibble(
   Category = "Mean (S.D.) of Age",
-  `Low concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Low concern"]), 1), " (", 
-                         round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Low concern"]), 1), ")"),
-  `Medium concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Medium concern"]), 1), " (", 
-                            round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Medium concern"]), 1), ")"),
-  `High concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "High concern"]), 1), " (", 
-                          round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "High concern"]), 1), ")"),
-  Total = paste0(round(mean(reproductive_age_cleaned$age), 1), " (", 
-                 round(sd(reproductive_age_cleaned$age), 1), ")"),
+  `Unconcerned` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Unconcerned"], na.rm = TRUE), 1), 
+                         " (", round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Unconcerned"], na.rm = TRUE), 1), ")"),
+  `Concerned` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Concerned"], na.rm = TRUE), 1), 
+                       " (", round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Concerned"], na.rm = TRUE), 1), ")"),
+  `Very concerned` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Very concerned"], na.rm = TRUE), 1), 
+                            " (", round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Very concerned"], na.rm = TRUE), 1), ")"),
+  `Extremely concerned` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Extremely concerned"], na.rm = TRUE), 1), 
+                                 " (", round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Extremely concerned"], na.rm = TRUE), 1), ")"),
+  Total = paste0(round(mean(reproductive_age_cleaned$age, na.rm = TRUE), 1), 
+                 " (", round(sd(reproductive_age_cleaned$age, na.rm = TRUE), 1), ")"),
   section = "AGE"
 )
 
+# Other variable summaries
 children_tab <- summarize_by_group(reproductive_age_cleaned, "present_children") %>% mutate(section = "PRESENT CHILDREN")
 edu_tab <- summarize_by_group(reproductive_age_cleaned, "educational_qualification") %>% mutate(section = "EDUCATION")
 emp_tab <- reproductive_age_cleaned %>%
@@ -166,13 +178,16 @@ income_tab <- reproductive_age_cleaned %>%
 marital_tab <- summarize_by_group(reproductive_age_cleaned, "marital_status_current") %>% mutate(section = "MARITAL STATUS")
 
 # --------------------------------
-# COMBINE AND MAKING FINAL TABLE
+# COMBINE ALL TABLES
 # --------------------------------
 final_table <- bind_rows(
   sex_tab, age_tab, age_mean_sd, children_tab, edu_tab,
   emp_tab, income_tab, marital_tab
 )
 
+# --------------------------------
+# FINAL TABLE: gt WITH 4 CLIMATE CATEGORIES
+# --------------------------------
 table_1 <- final_table %>%
   arrange(factor(section, levels = c(
     "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION",
@@ -184,11 +199,13 @@ table_1 <- final_table %>%
   ) %>%
   cols_label(
     Category = "Category",
-    `Low concern` = "Low concern",
-    `Medium concern` = "Medium concern",
-    `High concern` = "High concern",
+    `Unconcerned` = "Unconcerned",
+    `Concerned` = "Concerned",
+    `Very concerned` = "Very concerned",
+    `Extremely concerned` = "Extremely concerned",
     Total = "Total"
   ) %>%
+  cols_move_to_start(columns = c("Category", "Unconcerned", "Concerned", "Very concerned", "Extremely concerned", "Total")) %>%
   sub_missing(missing_text = "") %>%
   tab_options(
     table.font.names = c("Times New Roman", "serif"),
@@ -207,6 +224,7 @@ table_1 <- final_table %>%
     row.striping.background_color = "gray95"
   )
 
-table_1
 
+table_1
+# Save as HTML
 gtsave(table_1, "Table5.html")
