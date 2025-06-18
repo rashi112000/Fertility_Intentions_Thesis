@@ -1,0 +1,11 @@
+# Counts for concern_category
+table(regression_data$concern_category)
+
+# Counts for flood_impact
+table(regression_data$flood_impact)
+
+# Counts for the interaction (joint distribution)
+table(regression_data$concern_category, regression_data$flood_impact)
+
+# Optional: if you want proportions as well (for better interpretation)
+prop.table(table(regression_data$concern_category, regression_data$flood_impact))
