@@ -215,41 +215,62 @@ flood_tab <- simple_freq_table(reproductive_age_cleaned, "flood_impact", "FLOOD 
 # --------------------------------
 # FINAL TABLE: BIND ROWS & ORDER SECTIONS
 # --------------------------------
+# Combine all tables
 final_simple_table_updated <- bind_rows(
     sex_tab, age_tab, marital_tab, children_tab, edu_tab, emp_tab, income_tab, flood_tab,
     ideal_personal_stats, ideal_society_stats
 )
 
-summary_gt <- final_simple_table_updated %>%
-    arrange(factor(Section, levels = c(
-        "SEX", "AGE", "MARITAL STATUS", "PRESENT CHILDREN", "EDUCATION", 
-        "EMPLOYMENT STATUS", "INCOME", "FLOOD IMPACT",
-        "IDEAL NUMBER OF CHILDREN"
-    ))) %>%
-    gt(groupname_col = "Section") %>%
-    tab_header(
-        title = md("**Table 1. Demographic Characteristics of Reproductive-Aged Respondents (18–50)**")
-    ) %>%
-    cols_label(
-        Category = "Category",
-        Percent = "Percentage"
-    ) %>%
-    sub_missing(missing_text = "") %>%
-    tab_options(
-        table.font.names = c("Times New Roman"),
-        table.font.size = 12,
-        heading.title.font.size = 14,
-        heading.title.font.weight = "bold",
-        row_group.font.weight = "bold",
-        column_labels.font.weight = "bold",
-        column_labels.font.size = 14,
-        data_row.padding = px(4),
-        table.border.top.color = "black",
-        table.border.bottom.color = "black",
-        row_group.border.top.color = "gray80",
-        row_group.border.bottom.color = "gray80"
+# Define the desired order of sections
+section_levels <- c(
+  "SEX", "AGE", "MARITAL STATUS", "PRESENT CHILDREN", "EDUCATION", 
+  "EMPLOYMENT STATUS", "INCOME", "FLOOD IMPACT",
+  "IDEAL NUMBER OF CHILDREN — Mean (SD)"
+)
+
+# Arrange the table by Section factor levels
+final_simple_table_ordered <- final_simple_table_updated %>%
+  mutate(Section = factor(Section, levels = section_levels)) %>%
+  arrange(Section)
+
+# Now find the last row where Section == "FLOOD IMPACT" **in the sorted table**
+last_demographic_row <- max(which(final_simple_table_ordered$Section == "IDEAL NUMBER OF CHILDREN — Mean (SD)"))
+
+# Create gt table from the ordered table and apply the border style
+summary_gt <- final_simple_table_ordered %>%
+  gt(groupname_col = "Section") %>%
+  tab_header(
+    title = md("**Table 1. Demographic Characteristics of Reproductive-Aged Respondents (18–50)**")
+  ) %>%
+  cols_label(
+    Category = "Category",
+    Percent = "Percentage"
+  ) %>%
+  sub_missing(missing_text = "") %>%
+  tab_options(
+    table.font.names = c("Times New Roman"),
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    heading.title.font.weight = "bold",
+    row_group.font.weight = "bold",
+    column_labels.font.weight = "bold",
+    column_labels.font.size = 14,
+    data_row.padding = px(4),
+    table.border.top.color = "black",
+    table.border.bottom.color = "black",
+    row_group.border.top.color = "gray80",
+    row_group.border.bottom.color = "gray80"
+  ) %>%
+  tab_style(
+    style = cell_borders(
+      sides = "bottom",
+      color = "black",
+      weight = px(2)
+    ),
+    locations = cells_body(
+      rows = last_demographic_row
     )
+  )
 
 print(summary_gt)
-
 gtsave(summary_gt, "Table1.html")
