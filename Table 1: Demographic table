@@ -1,0 +1,255 @@
+# --------------------------------
+# LOADING REQUIRED LIBRARIES 
+# --------------------------------
+library(dplyr)     
+library(gt)        
+library(stringr)   
+library(tidyr)     
+
+# --------------------------------
+# LOADING DATA
+# --------------------------------
+data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
+
+# --------------------------------
+# COMBINING DATA of t0 and t1 
+# --------------------------------
+data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
+data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
+data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+
+# --------------------------------
+# CALCULATING AGE 
+# --------------------------------
+data2$age <- 2025 - data2$numeric_birth_year
+
+# --------------------------------
+# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# --------------------------------
+data2$age <- as.numeric(as.character(data2$age))
+reproductive_age_2 <- data2 %>%
+    filter(!is.na(age), age >= 18, age <= 50)
+
+# --------------------------------
+# STANDARDIZING CLIMATE CONCERN AND CREATING CATEGORIES
+# --------------------------------
+reproductive_age_2 <- reproductive_age_2 %>%
+    mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
+    mutate(concern_category = case_when(
+        str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+        str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+        str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+        str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+        TRUE ~ NA_character_
+    ))
+
+# --------------------------------
+# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# --------------------------------
+reproductive_age_cleaned <- reproductive_age_2 %>%
+    filter(sex %in% c("Male", "Female")) %>%
+    mutate(present_children = case_when(
+        numeric_number_children == 0 ~ "0",
+        numeric_number_children == 1 ~ "1",
+        numeric_number_children == 2 ~ "2",
+        numeric_number_children >= 3 ~ "3 or more",
+        TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(present_children)) %>%
+    mutate(educational_qualification = case_when(
+        education == "No educational qualification" ~ "No education", 
+        education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School", 
+        education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD", 
+        TRUE ~ NA_character_
+    )) %>%
+    mutate(employment_current = case_when(
+        employment_status == "Worker" ~ "Working",
+        employment_status == "Student" ~ "Student",
+        employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+        TRUE ~ NA_character_
+    )) %>%
+    mutate(marital_status_current = case_when(
+        marital_status == "Married" ~ "Married",
+        marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+        TRUE ~ NA_character_
+    )) %>%
+    mutate(income_monthly = case_when(
+        net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+        net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Medium income",
+        net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+        TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(income_monthly)) %>%
+    mutate(flood_impact = case_when(
+        floodedcomune == 1 ~ "Flooded",
+        floodedcomune == 0 ~ "Not flooded",
+        TRUE ~ NA_character_
+    )) %>%
+    mutate(age_bracket = cut(age,
+                             breaks = c(17, 24, 29, 34, 39, 44, 50),
+                             labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                             right = TRUE))
+
+# --------------------------------
+# FUNCTION TO CLEAN IDEAL CHILDREN VARIABLES
+# --------------------------------
+clean_ideal_children <- function(df, var_name) {
+    original_var <- var_name
+    original_var_orig <- paste0("original_", var_name)
+    new_cat_var <- sub("2$", "3", var_name)   # Cleaned variable name
+    
+    df[[original_var_orig]] <- df[[original_var]]
+    df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+    num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+    
+    df[[new_cat_var]] <- case_when(
+        is.na(num_vals) & !is.na(df[[original_var]]) ~ "There is no ideal number / unclear",
+        is.na(num_vals) ~ NA_character_,
+        num_vals == 0 ~ "0",
+        num_vals == 1 ~ "1",
+        num_vals == 2 ~ "2",
+        num_vals == 3 ~ "3",
+        num_vals == 4 ~ "4",
+        num_vals >= 5 ~ "5 or more",
+        TRUE ~ "There is no ideal number / unclear"
+    )
+    return(df)
+}
+
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+    filter(
+        !ideal_children_personally3 %in% c("5 or more" , "Unclear", NA),
+        !ideal_children_society3 %in% c("5 or more" , "Unclear", NA),
+        !is.na(concern_category),
+        concern_category != "Unclear"
+    )
+
+# Create numeric columns for ideal children
+reproductive_age_cleaned <- reproductive_age_cleaned %>%
+    mutate(
+        ideal_children_personally_num = case_when(
+            ideal_children_personally3 == "0" ~ 0,
+            ideal_children_personally3 == "1" ~ 1,
+            ideal_children_personally3 == "2" ~ 2,
+            ideal_children_personally3 == "3" ~ 3,
+            ideal_children_personally3 == "4" ~ 4,
+            TRUE ~ NA_integer_
+        ),
+        ideal_children_society_num = case_when(
+            ideal_children_society3 == "0" ~ 0,
+            ideal_children_society3 == "1" ~ 1,
+            ideal_children_society3 == "2" ~ 2,
+            ideal_children_society3 == "3" ~ 3,
+            ideal_children_society3 == "4" ~ 4,
+            TRUE ~ NA_integer_
+        )
+    )
+
+# --------------------------------
+# MEAN (SD) FOR IDEAL NUMBER OF CHILDREN
+# --------------------------------
+ideal_personal_stats <- reproductive_age_cleaned %>%
+    summarise(
+        Mean = round(mean(ideal_children_personally_num, na.rm = TRUE), 2),
+        SD = round(sd(ideal_children_personally_num, na.rm = TRUE), 2)
+    ) %>%
+    mutate(Section = "IDEAL NUMBER OF CHILDREN — Mean (SD)",
+           Category = "Ideal number personally ",
+           Percent = paste0(Mean, " (", SD, ")")) %>%
+    select(Section, Category, Percent)
+
+ideal_society_stats <- reproductive_age_cleaned %>%
+    summarise(
+        Mean = round(mean(ideal_children_society_num, na.rm = TRUE), 2),
+        SD = round(sd(ideal_children_society_num, na.rm = TRUE), 2)
+    ) %>%
+    mutate(Section = "IDEAL NUMBER OF CHILDREN — Mean (SD)",
+           Category = "Ideal number for society ",
+           Percent = paste0(Mean, " (", SD, ")")) %>%
+    select(Section, Category, Percent)
+
+# --------------------------------
+# SIMPLE FREQUENCY TABLE FUNCTION
+# --------------------------------
+simple_freq_table <- function(data, variable, section_name, levels_order = NULL) {
+    if (!is.null(levels_order)) {
+        data[[variable]] <- factor(data[[variable]], levels = levels_order)
+    }
+    
+    data %>%
+        filter(!is.na(.data[[variable]])) %>%
+        count(.data[[variable]]) %>%
+        mutate(Percent = round(100 * n / sum(n), 1),
+               Percent = paste0(Percent, "%"),
+               Section = section_name) %>%
+        rename(Category = !!variable) %>%
+        select(Section, Category, Percent)
+}
+
+# --------------------------------
+# GENERATE FREQUENCY TABLES FOR OTHER DEMOGRAPHICS
+# --------------------------------
+sex_tab <- simple_freq_table(reproductive_age_cleaned, "sex", "SEX")
+age_tab <- simple_freq_table(reproductive_age_cleaned, "age_bracket", "AGE")
+children_tab <- simple_freq_table(reproductive_age_cleaned, "present_children", "PRESENT CHILDREN")
+edu_tab <- simple_freq_table(reproductive_age_cleaned, "educational_qualification", "EDUCATION",   
+                             levels_order = c("No education", "Elementary to High School", "Bachelor/Master/PhD"))
+emp_tab <- simple_freq_table(
+    reproductive_age_cleaned,
+    "employment_current",
+    "EMPLOYMENT STATUS",
+    levels_order = c("Unemployed/Inactive/Retired", "Student", "Working")
+)
+income_tab <- simple_freq_table(
+    reproductive_age_cleaned,
+    "income_monthly",
+    "INCOME",
+    levels_order = c("Low income", "Medium income","High income")
+)
+marital_tab <- simple_freq_table(reproductive_age_cleaned, "marital_status_current", "MARITAL STATUS")
+flood_tab <- simple_freq_table(reproductive_age_cleaned, "flood_impact", "FLOOD IMPACT")
+
+# --------------------------------
+# FINAL TABLE: BIND ROWS & ORDER SECTIONS
+# --------------------------------
+final_simple_table_updated <- bind_rows(
+    sex_tab, age_tab, marital_tab, children_tab, edu_tab, emp_tab, income_tab, flood_tab,
+    ideal_personal_stats, ideal_society_stats
+)
+
+summary_gt <- final_simple_table_updated %>%
+    arrange(factor(Section, levels = c(
+        "SEX", "AGE", "MARITAL STATUS", "PRESENT CHILDREN", "EDUCATION", 
+        "EMPLOYMENT STATUS", "INCOME", "FLOOD IMPACT",
+        "IDEAL NUMBER OF CHILDREN"
+    ))) %>%
+    gt(groupname_col = "Section") %>%
+    tab_header(
+        title = md("**Table 1. Demographic Characteristics of Reproductive-Aged Respondents (18–50)**")
+    ) %>%
+    cols_label(
+        Category = "Category",
+        Percent = "Percentage"
+    ) %>%
+    sub_missing(missing_text = "") %>%
+    tab_options(
+        table.font.names = c("Times New Roman"),
+        table.font.size = 12,
+        heading.title.font.size = 14,
+        heading.title.font.weight = "bold",
+        row_group.font.weight = "bold",
+        column_labels.font.weight = "bold",
+        column_labels.font.size = 14,
+        data_row.padding = px(4),
+        table.border.top.color = "black",
+        table.border.bottom.color = "black",
+        row_group.border.top.color = "gray80",
+        row_group.border.bottom.color = "gray80"
+    )
+
+print(summary_gt)
+
+gtsave(summary_gt, "Table1.html")
