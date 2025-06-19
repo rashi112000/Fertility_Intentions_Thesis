@@ -54,62 +54,54 @@ reproductive_age_2 <- reproductive_age_2 %>%
 # --------------------------------
 reproductive_age_cleaned <- reproductive_age_2 %>%
   filter(sex %in% c("Male", "Female")) %>%
-  
-  # Categorize number of children
-  mutate(present_children = case_when(
-    numeric_number_children == 0 ~ "0",
-    numeric_number_children == 1 ~ "1",
-    numeric_number_children == 2 ~ "2",
-    numeric_number_children >= 3 ~ "3 or more",
-    TRUE ~ NA_character_
-  )) %>%
+  mutate(
+    present_children = case_when(
+      numeric_number_children == 0 ~ "0",
+      numeric_number_children == 1 ~ "1",
+      numeric_number_children == 2 ~ "2",
+      numeric_number_children >= 3 ~ "3 or more",
+      TRUE ~ NA_character_
+    )
+  ) %>%
   filter(!is.na(present_children)) %>%
-  
-  # Simplify education levels
-  mutate(educational_qualification = case_when(
-    education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
-    education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
-    education == "No educational qualification" ~ "No education",
-    TRUE ~ NA_character_
-  )) %>%
-  
-  # Recode employment status
-  mutate(employment_current = case_when(
-    employment_status == "Worker" ~ "Working",
-    employment_status == "Student" ~ "Student",
-    employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
-    TRUE ~ NA_character_
-  )) %>%
-  
-  # Simplify marital status
-  mutate(marital_status_current = case_when(
-    marital_status == "Married" ~ "Married",
-    marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
-    TRUE ~ NA_character_
-  )) %>%
-  
-  # Group income brackets
-  mutate(income_monthly = case_when(
-    net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
-    net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
-    net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
-    TRUE ~ NA_character_
-  )) %>%
+  mutate(
+    educational_qualification = case_when(
+      education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
+      education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
+      education == "No educational qualification" ~ "No education",
+      TRUE ~ NA_character_
+    ),
+    employment_current = case_when(
+      employment_status == "Worker" ~ "Working",
+      employment_status == "Student" ~ "Student",
+      employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
+      TRUE ~ NA_character_
+    ),
+    marital_status_current = case_when(
+      marital_status == "Married" ~ "Married",
+      marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
+      TRUE ~ NA_character_
+    ),
+    income_monthly = case_when(
+      net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
+      net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
+      net_income_month %in% c("5,001 to 10,000 euros", "More than 10.000 euros") ~ "High income",
+      TRUE ~ NA_character_
+    )
+  ) %>%
   filter(!is.na(income_monthly)) %>%
-  
-  # Create age brackets
-  mutate(age_bracket = cut(age,
-                           breaks = c(17, 24, 29, 34, 39, 44, 50),
-                           labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
-                           right = TRUE)) %>%
-  
-  # Create 3-level climate concern variable
-  mutate(climate_concern = case_when(
-    concern_category == "UNCONCERNED" ~ "Low concern",
-    concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
-    concern_category == "EXTREMELY CONCERNED" ~ "High concern",
-    TRUE ~ NA_character_
-  ))
+  mutate(
+    age_bracket = cut(age,
+                      breaks = c(17, 24, 29, 34, 39, 44, 50),
+                      labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
+                      right = TRUE),
+    climate_concern = case_when(
+      concern_category == "UNCONCERNED" ~ "Low concern",
+      concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
+      concern_category == "EXTREMELY CONCERNED" ~ "High concern",
+      TRUE ~ NA_character_
+    )
+  )
 
 # --------------------------------
 # CLEAN IDEAL CHILDREN VARIABLES FUNCTION
@@ -119,16 +111,13 @@ clean_ideal_children <- function(df, var_name) {
   original_var_orig <- paste0("original_", var_name)
   new_cat_var <- sub("2$", "3", var_name)  # New cleaned variable name
 
-  # Save original column
   df[[original_var_orig]] <- df[[original_var]]
-
+  
   # Replace whitespace-only strings with NA
   df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
-
-  # Safely convert to numeric
+  
   num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
-
-  # Categorize numeric responses into clean factors
+  
   df[[new_cat_var]] <- case_when(
     is.na(num_vals) & !is.na(df[[original_var]]) ~ "There is no ideal number / unclear",
     is.na(num_vals) ~ NA_character_,
@@ -140,17 +129,13 @@ clean_ideal_children <- function(df, var_name) {
     num_vals >= 5 ~ "5 or more",
     TRUE ~ "There is no ideal number / unclear"
   )
-
+  
   return(df)
 }
 
 # Apply cleaning function to both personal and societal ideal children variables
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
 reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
-
-# Quick check of cleaned categories
-table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
-table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
 
 # --------------------------------
 # PREPARE DATA FOR IDEAL CHILDREN SUMMARY
@@ -205,8 +190,6 @@ summarize_by_group_row_percent <- function(data, variable, group_var = "climate_
 # --------------------------------
 # CREATE SUMMARY TABLES FOR EACH VARIABLE
 # --------------------------------
-
-# Frequency tables with row percentages for categorical variables
 sex_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "sex") %>% mutate(section = "SEX")
 age_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "age_bracket") %>% mutate(section = "AGE")
 children_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "present_children") %>% mutate(section = "PRESENT CHILDREN")
@@ -226,7 +209,6 @@ marital_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "marital
   mutate(section = "MARITAL STATUS")
 
 # Mean and SD of Ideal Children variables by climate concern
-# Modify Ideal Children Summary with nicer Category labels
 ideal_children_summary <- tibble(
   Category = c(
     "Ideal number personally",
@@ -275,16 +257,20 @@ ideal_children_summary <- tibble(
   section = "IDEAL NUMBER OF CHILDREN - Mean (SD)"
 )
 
-
-
 # --------------------------------
-# COMBINE ALL TABLES INTO FINAL TABLE AND RENDER WITH gt
+# COMBINE ALL TABLES INTO FINAL TABLE
 # --------------------------------
 final_table <- bind_rows(
   sex_tab, age_tab, children_tab, edu_tab,
   emp_tab, income_tab, marital_tab, ideal_children_summary
 )
 
+# Calculate last row index for styling
+last_row <- nrow(final_table)
+
+# --------------------------------
+# CREATE GT TABLE AND STYLE
+# --------------------------------
 table_1 <- final_table %>%
   arrange(factor(section, levels = c(
     "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION",
@@ -317,10 +303,21 @@ table_1 <- final_table %>%
     row_group.border.bottom.color = "gray80",
     row.striping.include_table_body = TRUE,
     row.striping.background_color = "gray95"
+  ) %>%
+  tab_style(
+    style = cell_borders(
+      sides = "bottom",
+      color = "black",
+      weight = px(2)
+    ),
+    locations = cells_body(
+      rows = last_row
+    )
   )
 
-# View the table 
+# --------------------------------
+# SHOW TABLE AND SAVE
+# --------------------------------
 table_1
-
 
 gtsave(table_1, "Table 5.html")
