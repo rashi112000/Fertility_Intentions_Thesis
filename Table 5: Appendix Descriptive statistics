@@ -1,55 +1,61 @@
 # --------------------------------
-# LOADING REQUIRED LIBRARIES
+# LOAD REQUIRED LIBRARIES
 # --------------------------------
-library(dplyr)       # Data manipulation
-library(stringr)     # Text processing
-library(tidyr)       # Data reshaping
-library(gt)          # Beautiful tables
-library(webshot2)    # Save tables as images or documents
+library(dplyr)       # For data manipulation
+library(stringr)     # For string processing
+library(tidyr)       # For data reshaping
+library(gt)          # For creating beautiful tables
+library(webshot2)    # For saving tables as images or documents
 
 # --------------------------------
-# LOADING DATA
+# LOAD DATA
 # --------------------------------
 data2 <- read.csv("/Users/rashisingh/Thesis/Survey_1_Rashi.csv")
 
 # --------------------------------
-# COMBINING DATA of t0 and t1 
+# COMBINE VARIABLES FROM TIMEPOINTS t0 and t1
 # --------------------------------
-data2$concern_combined2 <- paste(data2$q41_t0, data2$q43_t1)
-data2$ideal_children_society2 <- paste(data2$q50_t0_mod, data2$q52_mod_t1)
-data2$ideal_children_personally2 <- paste(data2$q51_t0, data2$q53_mod_t1)
+data2 <- data2 %>%
+  mutate(
+    concern_combined2 = paste(q41_t0, q43_t1),
+    ideal_children_society2 = paste(q50_t0_mod, q52_mod_t1),
+    ideal_children_personally2 = paste(q51_t0, q53_mod_t1)
+  )
 
 # --------------------------------
-# CALCULATING AGE 
+# CALCULATE AGE
 # --------------------------------
-data2$age <- 2025 - data2$numeric_birth_year
+data2 <- data2 %>%
+  mutate(age = 2025 - numeric_birth_year)
 
 # --------------------------------
-# FILTERING RESPONDENTS OF REPRODUCTIVE AGE (18–50)
+# FILTER RESPONDENTS IN REPRODUCTIVE AGE (18–50)
 # --------------------------------
 reproductive_age_2 <- data2 %>%
   filter(!is.na(age), age >= 18, age <= 50)
 
 # --------------------------------
-# STANDARDIZING CLIMATE CONCERN AND CREATING DIFFERENT CATEGORIES
+# STANDARDIZE CLIMATE CONCERN AND CREATE CATEGORIES
 # --------------------------------
 reproductive_age_2 <- reproductive_age_2 %>%
-  mutate(concern_combined2 = str_to_lower(concern_combined2)) %>%
-  mutate(concern_category = case_when(
-    str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
-    str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
-    str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
-    str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
-    TRUE ~ NA_character_
-  ))
+  mutate(
+    concern_combined2 = str_to_lower(concern_combined2),
+    concern_category = case_when(
+      str_detect(concern_combined2, "not at all concerned|unconcerned") ~ "UNCONCERNED",
+      str_detect(concern_combined2, "fairly concerned") ~ "CONCERNED",
+      str_detect(concern_combined2, "very concerned") ~ "VERY CONCERNED",
+      str_detect(concern_combined2, "extremely concerned") ~ "EXTREMELY CONCERNED",
+      TRUE ~ NA_character_
+    )
+  )
 
 # --------------------------------
-# CLEANING & RECODING DEMOGRAPHIC VARIABLES
+# CLEAN AND RECODE DEMOGRAPHIC VARIABLES
 # --------------------------------
 reproductive_age_cleaned <- reproductive_age_2 %>%
   filter(sex %in% c("Male", "Female")) %>%
   
-  # Categorizing number of children
+  # Categorize number of children
   mutate(present_children = case_when(
     numeric_number_children == 0 ~ "0",
     numeric_number_children == 1 ~ "1",
@@ -58,31 +64,31 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(present_children)) %>%
-
-  # Simplifying education levels
+  
+  # Simplify education levels
   mutate(educational_qualification = case_when(
     education %in% c("Bachelor's or Master's degree", "Ph.D.") ~ "Bachelor/Master/PhD",
     education %in% c("Elementary school diploma", "High school diploma", "Middle school diploma") ~ "Elementary to High School",
     education == "No educational qualification" ~ "No education",
     TRUE ~ NA_character_
   )) %>%
-
-  # Recoding employment status
+  
+  # Recode employment status
   mutate(employment_current = case_when(
     employment_status == "Worker" ~ "Working",
     employment_status == "Student" ~ "Student",
     employment_status %in% c("Unemployed", "Retired", "Inactive (Not working nor looking for work)") ~ "Unemployed/Inactive/Retired",
     TRUE ~ NA_character_
   )) %>%
-
-  # Simplifying marital status
+  
+  # Simplify marital status
   mutate(marital_status_current = case_when(
     marital_status == "Married" ~ "Married",
     marital_status %in% c("De facto seperated", "Legally seperated", "Divorced", "Widower", "Single/Unmarried") ~ "Not married",
     TRUE ~ NA_character_
   )) %>%
-
-  # Grouping income brackets
+  
+  # Group income brackets
   mutate(income_monthly = case_when(
     net_income_month %in% c("Less than 1,001 euros", "1,001 to 1,500 euros", "1,501 to 2,000 euros") ~ "Low income",
     net_income_month %in% c("2,001 to 3,000 euros", "3,001 to 5,000 euros") ~ "Middle income",
@@ -90,14 +96,14 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
     TRUE ~ NA_character_
   )) %>%
   filter(!is.na(income_monthly)) %>%
-
-  # Creating age brackets
+  
+  # Create age brackets
   mutate(age_bracket = cut(age,
                            breaks = c(17, 24, 29, 34, 39, 44, 50),
                            labels = c("18–24", "25–29", "30–34", "35–39", "40–44", "45–50"),
                            right = TRUE)) %>%
-
-  # Creating a 3-level climate concern variable
+  
+  # Create 3-level climate concern variable
   mutate(climate_concern = case_when(
     concern_category == "UNCONCERNED" ~ "Low concern",
     concern_category %in% c("CONCERNED", "VERY CONCERNED") ~ "Medium concern",
@@ -106,50 +112,103 @@ reproductive_age_cleaned <- reproductive_age_2 %>%
   ))
 
 # --------------------------------
-# USING HELPER FUNCTIONS
+# CLEAN IDEAL CHILDREN VARIABLES FUNCTION
+# --------------------------------
+clean_ideal_children <- function(df, var_name) {
+  original_var <- var_name
+  original_var_orig <- paste0("original_", var_name)
+  new_cat_var <- sub("2$", "3", var_name)  # New cleaned variable name
+
+  # Save original column
+  df[[original_var_orig]] <- df[[original_var]]
+
+  # Replace whitespace-only strings with NA
+  df[[original_var]][grepl("^\\s*$", df[[original_var]])] <- NA
+
+  # Safely convert to numeric
+  num_vals <- suppressWarnings(as.numeric(as.character(df[[original_var]])))
+
+  # Categorize numeric responses into clean factors
+  df[[new_cat_var]] <- case_when(
+    is.na(num_vals) & !is.na(df[[original_var]]) ~ "There is no ideal number / unclear",
+    is.na(num_vals) ~ NA_character_,
+    num_vals == 0 ~ "0",
+    num_vals == 1 ~ "1",
+    num_vals == 2 ~ "2",
+    num_vals == 3 ~ "3",
+    num_vals == 4 ~ "4",
+    num_vals >= 5 ~ "5 or more",
+    TRUE ~ "There is no ideal number / unclear"
+  )
+
+  return(df)
+}
+
+# Apply cleaning function to both personal and societal ideal children variables
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_personally2")
+reproductive_age_cleaned <- clean_ideal_children(reproductive_age_cleaned, "ideal_children_society2")
+
+# Quick check of cleaned categories
+table(reproductive_age_cleaned$ideal_children_personally3, useNA = "ifany")
+table(reproductive_age_cleaned$ideal_children_society3, useNA = "ifany")
+
+# --------------------------------
+# PREPARE DATA FOR IDEAL CHILDREN SUMMARY
+# --------------------------------
+summary_data <- reproductive_age_cleaned %>%
+  filter(
+    !ideal_children_personally3 %in% c("5 or more", "There is no ideal number / unclear", NA),
+    !ideal_children_society3 %in% c("5 or more", "There is no ideal number / unclear", NA),
+    !is.na(climate_concern)
+  ) %>%
+  mutate(
+    ideal_children_personally_num = case_when(
+      ideal_children_personally3 == "0" ~ 0,
+      ideal_children_personally3 == "1" ~ 1,
+      ideal_children_personally3 == "2" ~ 2,
+      ideal_children_personally3 == "3" ~ 3,
+      ideal_children_personally3 == "4" ~ 4,
+      TRUE ~ NA_integer_
+    ),
+    ideal_children_society_num = case_when(
+      ideal_children_society3 == "0" ~ 0,
+      ideal_children_society3 == "1" ~ 1,
+      ideal_children_society3 == "2" ~ 2,
+      ideal_children_society3 == "3" ~ 3,
+      ideal_children_society3 == "4" ~ 4,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  filter(!is.na(ideal_children_personally_num), !is.na(ideal_children_society_num))
+
+# --------------------------------
+# HELPER FUNCTIONS FOR TABLES
 # --------------------------------
 format_percent <- function(x, digits = 1) {
   paste0(round(100 * x, digits), "%")
 }
 
 summarize_by_group_row_percent <- function(data, variable, group_var = "climate_concern") {
-  # Tabulate counts for each category per group
   counts <- data %>%
     count(!!sym(variable), !!sym(group_var)) %>%
-    pivot_wider(names_from = !!sym(group_var), values_from = n, values_fill = 0)
-
-  # Calculate row totals
-  counts <- counts %>%
-    mutate(Total = rowSums(select(., -!!sym(variable)))) %>%
-    mutate(across(-c(!!sym(variable), Total), ~ paste0(.x, " (", format_percent(.x / Total), ")"))) %>%
-    mutate(Total = paste0(Total, " (100%)")) %>%
+    pivot_wider(names_from = !!sym(group_var), values_from = n, values_fill = 0) %>%
+    mutate(
+      Total = rowSums(select(., -!!sym(variable))),
+      across(-c(!!sym(variable), Total), ~ paste0(.x, " (", format_percent(.x / Total), ")")),
+      Total = paste0(Total, " (100%)")
+    ) %>%
     rename(Category = !!sym(variable))
-
+  
   return(counts)
 }
 
-
 # --------------------------------
-# CREATING SUMMARY TABLES FOR EACH VARIABLE
+# CREATE SUMMARY TABLES FOR EACH VARIABLE
 # --------------------------------
 
-# Add mean and standard deviation of age
-age_mean_sd <- tibble(
-  Category = "Mean (S.D.) of Age",
-  `Low concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Low concern"]), 1), " (", 
-                         round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Low concern"]), 1), ")"),
-  `Medium concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Medium concern"]), 1), " (", 
-                            round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "Medium concern"]), 1), ")"),
-  `High concern` = paste0(round(mean(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "High concern"]), 1), " (", 
-                          round(sd(reproductive_age_cleaned$age[reproductive_age_cleaned$climate_concern == "High concern"]), 1), ")"),
-  Total = paste0(round(mean(reproductive_age_cleaned$age), 1), " (", 
-                 round(sd(reproductive_age_cleaned$age), 1), ")"),
-  section = "AGE"
-)
-
+# Frequency tables with row percentages for categorical variables
 sex_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "sex") %>% mutate(section = "SEX")
 age_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "age_bracket") %>% mutate(section = "AGE")
-
 children_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "present_children") %>% mutate(section = "PRESENT CHILDREN")
 edu_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "educational_qualification") %>% mutate(section = "EDUCATION")
 
@@ -163,20 +222,73 @@ income_tab <- reproductive_age_cleaned %>%
   summarize_by_group_row_percent("income_monthly") %>%
   mutate(section = "INCOME")
 
-marital_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "marital_status_current") %>% mutate(section = "MARITAL STATUS")
+marital_tab <- summarize_by_group_row_percent(reproductive_age_cleaned, "marital_status_current") %>%
+  mutate(section = "MARITAL STATUS")
+
+# Mean and SD of Ideal Children variables by climate concern
+# Modify Ideal Children Summary with nicer Category labels
+ideal_children_summary <- tibble(
+  Category = c(
+    "Ideal number personally",
+    "Ideal number for society"
+  ),
+  `Low concern` = c(
+    paste0(
+      round(mean(summary_data$ideal_children_personally_num[summary_data$climate_concern == "Low concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_personally_num[summary_data$climate_concern == "Low concern"]), 2), ")"
+    ),
+    paste0(
+      round(mean(summary_data$ideal_children_society_num[summary_data$climate_concern == "Low concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_society_num[summary_data$climate_concern == "Low concern"]), 2), ")"
+    )
+  ),
+  `Medium concern` = c(
+    paste0(
+      round(mean(summary_data$ideal_children_personally_num[summary_data$climate_concern == "Medium concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_personally_num[summary_data$climate_concern == "Medium concern"]), 2), ")"
+    ),
+    paste0(
+      round(mean(summary_data$ideal_children_society_num[summary_data$climate_concern == "Medium concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_society_num[summary_data$climate_concern == "Medium concern"]), 2), ")"
+    )
+  ),
+  `High concern` = c(
+    paste0(
+      round(mean(summary_data$ideal_children_personally_num[summary_data$climate_concern == "High concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_personally_num[summary_data$climate_concern == "High concern"]), 2), ")"
+    ),
+    paste0(
+      round(mean(summary_data$ideal_children_society_num[summary_data$climate_concern == "High concern"]), 2), " (",
+      round(sd(summary_data$ideal_children_society_num[summary_data$climate_concern == "High concern"]), 2), ")"
+    )
+  ),
+  Total = c(
+    paste0(
+      round(mean(summary_data$ideal_children_personally_num), 2), " (",
+      round(sd(summary_data$ideal_children_personally_num), 2), ")"
+    ),
+    paste0(
+      round(mean(summary_data$ideal_children_society_num), 2), " (",
+      round(sd(summary_data$ideal_children_society_num), 2), ")"
+    )
+  ),
+  section = "IDEAL NUMBER OF CHILDREN - Mean (SD)"
+)
+
+
 
 # --------------------------------
-# COMBINE AND MAKING FINAL TABLE
+# COMBINE ALL TABLES INTO FINAL TABLE AND RENDER WITH gt
 # --------------------------------
 final_table <- bind_rows(
-  sex_tab, age_tab, age_mean_sd, children_tab, edu_tab,
-  emp_tab, income_tab, marital_tab
+  sex_tab, age_tab, children_tab, edu_tab,
+  emp_tab, income_tab, marital_tab, ideal_children_summary
 )
 
 table_1 <- final_table %>%
   arrange(factor(section, levels = c(
     "SEX", "AGE", "PRESENT CHILDREN", "EDUCATION",
-    "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS"
+    "EMPLOYMENT STATUS", "INCOME", "MARITAL STATUS", "IDEAL NUMBER OF CHILDREN - Mean (SD)"
   ))) %>%
   gt(groupname_col = "section") %>%
   tab_header(
@@ -207,4 +319,8 @@ table_1 <- final_table %>%
     row.striping.background_color = "gray95"
   )
 
+# View the table 
 table_1
+
+
+gtsave(table_1, "Table 5.html")
